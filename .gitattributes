@@ -1,0 +1,13 @@
+# Normalise line endings in the repo; Windows-only files keep CRLF on checkout.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cs  text eol=crlf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.ico binary
+*.exe binary
+
+# Vendored, minified libraries: hide from diffs and language stats
+public/vendor/** linguist-vendored -diff

@@ -1,0 +1,70 @@
+{
+  "name": "rx-cloude",
+  "version": "1.2.0",
+  "description": "Portable, zero-install cloud drive for Windows: a single .exe that turns any PC or server into a private web file share with users, sharing links and an encrypted vault.",
+  "main": "src/launcher.js",
+  "bin": "src/launcher.js",
+  "scripts": {
+    "start": "node src/launcher.js",
+    "dev": "node src/server_cli.js --port 8090",
+    "check": "node scripts/check.js",
+    "build:assets": "node scripts/build-assets.js",
+    "build:engine": "npm run build:assets && pkg src/server_cli.js --targets node18-win-x64 --output dist/RxCloudeEngine.exe",
+    "build:server": "npm run build:assets && pkg src/launcher.js --targets node18-win-x64 --output dist/RxCloudeServer.exe",
+    "build:gui": "node scripts/build-gui.js",
+    "build:stamp": "node scripts/stamp-version.js",
+    "build": "npm run build:engine && npm run build:server && npm run build:gui && npm run build:stamp",
+    "build:all": "npm run build"
+  },
+  "pkg": {
+    "scripts": [
+      "src/server.js",
+      "src/db.js",
+      "src/permissions.js",
+      "src/assets-bundle.js",
+      "package.json"
+    ]
+  },
+  "keywords": [
+    "file-sharing",
+    "cloud-drive",
+    "self-hosted",
+    "portable",
+    "windows",
+    "lan",
+    "file-server",
+    "express"
+  ],
+  "author": "ARG RABBI (https://github.com/itrabbi24)",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "adm-zip": "^0.6.1",
+    "archiver": "^8.0.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mime-types": "^3.0.2",
+    "multer": "^2.4.0",
+    "selfsigned": "^5.5.0",
+    "unzipper": "^0.12.5",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1",
+    "resedit": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/itrabbi24/rx-cloude.git"
+  },
+  "bugs": {
+    "url": "https://github.com/itrabbi24/rx-cloude/issues"
+  },
+  "homepage": "https://github.com/itrabbi24/rx-cloude#readme",
+  "private": true
+}
