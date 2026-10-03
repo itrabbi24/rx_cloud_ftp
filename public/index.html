@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Rx Cloude - Modern Cloud Storage</title>
+    <!-- PWA & Mobile Web App Support -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="apple-mobile-web-app-title" content="Rx Cloude">
+    <link rel="apple-touch-icon" href="/app_icon.png">
+    <link rel="icon" type="image/png" href="/app_icon.png">
+    <!-- Tailwind CSS -->
+    <script src="/vendor/tailwind-browser.js"></script>
+    <!-- Lucide Icons -->
+    <script src="/vendor/lucide.js"></script>
+    <!-- App shell: phone layout (bottom tab bar, sheets) + desktop polish -->
+    <link rel="stylesheet" href="/mobile.css">
+    <style>
+        body { font-family: Inter, 'Segoe UI', Arial, sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Password dots render tiny and cramped on Windows; give them room so the
+           field reads as a password box instead of a smear. Scoped to password
+           inputs only, and the vault PIN keeps its own wider tracking. */
+        input[type="password"]:not([class*="tracking-"]) {
+            font-size: 1.05em;
+            letter-spacing: 0.22em;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        input[type="password"]:not([class*="tracking-"])::placeholder {
+            letter-spacing: 0.22em;
+            color: #94a3b8;
+        }
+
+        /* The in-header filter pills need ~570px beside the search box and six
+           action buttons, so they only fit from about 1600px. Below that the
+           header squeezed them to a few pixels and clipped the labels ("Im"
+           instead of "Images"), so the dedicated scrollable filter row under the
+           header is used instead. */
+        @media (max-width: 1679.98px) {
+            #pwaInstallBtn { display: none !important; }
+        }
+
+        /* Search box keeps a usable width instead of being squeezed. */
+        #search-input { width: 14rem; max-width: 100%; }
+        #filterPillsRow { min-width: 0; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased h-screen flex overflow-hidden">
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="fixed inset-0 bg-gray-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-xl max-w-md w-full">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md shadow-blue-200">
+                    <i data-lucide="cloud" class="w-7 h-7"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900 tracking-tight">Rx <span class="text-blue-600">Cloude</span></h2>
+                    <p class="text-xs text-gray-500">Sign in to your personal cloud server</p>
+                </div>
+            </div>
+
+            <form id="loginForm" class="space-y-4" action="#" method="post">
+                <div>
+                    <label for="loginUsername" class="block text-xs font-semibold text-gray-700 mb-1">Username</label>
+                    <input type="text" id="loginUsername" name="username" required autofocus autocomplete="username" placeholder="admin" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                </div>
+                <div>
+                    <label for="loginPassword" class="block text-xs font-semibold text-gray-700 mb-1">Password</label>
+                    <input type="password" id="loginPassword" name="password" required autocomplete="current-password" placeholder="••••••••" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                </div>
+                <div id="loginError" role="alert" aria-live="polite" class="p-3 bg-red-50 text-red-600 text-xs rounded-xl hidden"></div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-xl transition-all shadow-md shadow-blue-200 cursor-pointer text-sm">
+                    Sign In to Drive
+                </button>
+            </form>
+        </div>
+
+        <!-- Small developer credit at bottom-right footer of login page only -->
+        <div class="absolute bottom-4 right-6 text-[11px] text-gray-400 select-none flex items-center gap-2">
+            <span class="px-2 py-0.5 bg-gray-100 border border-gray-200 rounded-md font-mono text-[10px] text-gray-500" id="loginVersionBadge">v-</span>
+            <span>Developed by <span class="font-medium text-gray-500">ARG RABBI</span></span>
+        </div>
+    </div>
+
+    <!-- MAIN DRIVE INTERFACE -->
+    <div id="driveScreen" class="h-screen w-screen flex overflow-hidden relative">
+        
+        <!-- MOBILE SIDEBAR BACKDROP OVERLAY -->
+        <div id="mobile-sidebar-overlay" onclick="closeMobileSidebar()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-30 hidden md:hidden transition-opacity"></div>
+
+        <!-- SIDEBAR (Responsive Drawer on Mobile, Fixed Sidebar on Desktop) -->
+        <aside id="main-sidebar" class="fixed md:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col justify-between shrink-0 transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out">
+            <div>
+                <!-- Logo Brand -->
+                <div class="h-16 flex items-center justify-between px-6 border-b border-gray-100">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-blue-600 text-white p-2 rounded-xl flex items-center justify-center shadow-md shadow-blue-200">
+                            <i data-lucide="cloud" class="w-6 h-6"></i>
+                        </div>
+                        <span class="font-bold text-lg tracking-tight text-gray-900">Rx <span class="text-blue-600">Cloude</span></span>
+                    </div>
+                    <!-- Close button on Mobile Drawer -->
+                    <button onclick="closeMobileSidebar()" class="md:hidden p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 cursor-pointer" title="Close Menu">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- New Button & Navigation -->
+                <div class="p-4">
+                    <button onclick="openUploadModal(); closeMobileSidebar();" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-200 transition-all cursor-pointer">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                        <span>New Upload</span>
+                    </button>
+
+                    <nav class="mt-6 space-y-1" id="sidebar-nav">
+                        <button onclick="switchTab('drive'); closeMobileSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-50 text-blue-700 font-medium text-sm transition-colors cursor-pointer nav-btn" data-tab="drive">
+                            <i data-lucide="hard-drive" class="w-5 h-5"></i> My Drive
+                        </button>
+                        <button onclick="switchTab('starred'); closeMobileSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium text-sm transition-colors cursor-pointer nav-btn" data-tab="starred">
+                            <i data-lucide="star" class="w-5 h-5 text-amber-500"></i> Starred Items
+                        </button>
+                        <button onclick="switchTab('vault'); closeMobileSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium text-sm transition-colors cursor-pointer nav-btn" data-tab="vault">
+                            <i data-lucide="shield-check" class="w-5 h-5 text-purple-600"></i> Secure Vault
+                        </button>
+                        <button onclick="openStorageCleanerModal(); closeMobileSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium text-sm transition-colors cursor-pointer">
+                            <i data-lucide="sparkles" class="w-5 h-5 text-emerald-600"></i> Smart Cleaner
+                        </button>
+                        <button onclick="switchTab('trash'); closeMobileSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium text-sm transition-colors cursor-pointer nav-btn" data-tab="trash">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i> Trash Bin
+                        </button>
+                        <button onclick="switchTab('users'); closeMobileSidebar();" id="navUsersBtn" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium text-sm transition-colors cursor-pointer nav-btn" data-tab="users">
+                            <i data-lucide="users" class="w-5 h-5"></i> Users & Access
+                        </button>
+                        <button onclick="openChangePassModal(); closeMobileSidebar();" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium text-sm transition-colors cursor-pointer">
+                            <i data-lucide="key-round" class="w-5 h-5"></i> Change Password
+                        </button>
+                        <button onclick="handleLogout()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 font-medium text-sm transition-colors cursor-pointer">
+                            <i data-lucide="log-out" class="w-5 h-5"></i> Log Out
+                        </button>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Storage Meter (Clickable for Analytics Breakdown) -->
+            <div onclick="openStorageAnalyticsModal(); closeMobileSidebar();" class="p-4 m-4 bg-gray-50 hover:bg-blue-50/50 border border-gray-200/80 hover:border-blue-300 rounded-2xl cursor-pointer transition-all group" title="Click to view full Storage Breakdown Analytics">
+                <div class="flex items-center justify-between text-gray-700 mb-2 font-medium text-sm">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="database" class="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform"></i>
+                        <span>Storage Status</span>
+                    </div>
+                    <i data-lucide="pie-chart" class="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600 transition-colors"></i>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden">
+                    <div id="storage-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-500" style="width: 25%"></div>
+                </div>
+                <div class="flex justify-between items-center gap-2 text-xs text-gray-500">
+                    <span id="storage-text" title="">Unlimited</span>
+                    <span class="text-blue-600 text-[10px] font-semibold group-hover:underline shrink-0">Details &rarr;</span>
+                </div>
+            </div>
+
+            <!-- Sidebar version stamp -->
+            <div class="px-5 pb-4 -mt-2 flex items-center justify-between text-[10px] text-gray-400">
+                <span>Rx Cloude <span id="sidebarVersionBadge" class="font-mono text-gray-500">v-</span></span>
+                <span id="sidebarEngineBadge" class="font-mono text-gray-400">-</span>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main id="main-scroll" class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+            <!-- Top Header Bar -->
+            <header id="app-header" class="bg-white border-b border-gray-200/80 flex flex-wrap items-center justify-between px-3 sm:px-6 md:px-8 sticky top-0 z-20 gap-y-2 gap-x-1.5 sm:gap-x-3 min-h-16">
+                <!-- Hamburger Menu on Mobile + Search Bar & Filters -->
+                <div class="flex items-center gap-2 sm:gap-4 min-w-0 order-1 shrink-0">
+                    <button onclick="openMobileSidebar()" class="hdr-menu md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-xl cursor-pointer shrink-0" title="Open Menu" aria-label="Open navigation menu">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+                    <!-- Phone app bar title (shown by mobile.css below 768px) -->
+                    <div class="hdr-brand hidden items-center gap-2 min-w-0">
+                        <div class="bg-blue-600 text-white p-1.5 rounded-xl shadow-md shadow-blue-200 shrink-0"><i data-lucide="cloud" class="w-5 h-5"></i></div>
+                        <span id="mobileTitle" class="font-bold text-lg tracking-tight text-gray-900 truncate">My Drive</span>
+                    </div>
+                </div>
+
+                <!-- Forces the search row onto its own line below md -->
+                <div class="order-3 md:hidden w-full h-0" aria-hidden="true"></div>
+
+                <div class="order-3 md:order-2 flex items-center gap-2 sm:gap-4 min-w-0 w-full md:w-auto md:shrink-0 lg:flex-1">
+                    <div class="search-wrap relative flex-1 md:w-56 lg:flex-none lg:w-56 min-w-0 shrink-0">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                        </span>
+                        <input type="search" id="search-input" enterkeyhint="search" autocomplete="off" oninput="handleSearch(this.value)" placeholder="Search files..." aria-label="Search files" class="w-full pl-8.5 pr-2.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all">
+                    </div>
+
+                    <!-- Category Filter Pills on Desktop (Hidden on mobile/tablet) -->
+                    <!-- Category & Color Tag Filter Pills on Desktop (Hidden on mobile/tablet) -->
+                    <div id="filterPillsRow" class="hidden min-[1680px]:flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 text-xs flex-1">
+                        <button onclick="setFilterCategory('all')" class="cat-pill px-3 py-1.5 rounded-full font-semibold transition-colors cursor-pointer bg-blue-50 text-blue-600" data-cat="all">All</button>
+                        <button onclick="setFilterCategory('starred')" class="cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100 flex items-center gap-1" data-cat="starred"><i data-lucide="star" class="w-3.5 h-3.5 text-amber-500"></i> Starred</button>
+                        <button onclick="setFilterCategory('docs')" class="cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100" data-cat="docs">Docs</button>
+                        <button onclick="setFilterCategory('images')" class="cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100" data-cat="images">Images</button>
+                        <button onclick="setFilterCategory('media')" class="cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100" data-cat="media">Media</button>
+                        <button onclick="setFilterCategory('code')" class="cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100" data-cat="code">Code</button>
+                        <button onclick="setFilterCategory('zip')" class="cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100" data-cat="zip">Zip</button>
+                        <div class="h-4 w-px bg-gray-200 mx-1"></div>
+                        <button onclick="setFilterColor('red')" class="w-5 h-5 rounded-full bg-rose-500 hover:scale-110 transition-transform cursor-pointer color-filter-pill" title="Filter Red Tag" data-color="red"></button>
+                        <button onclick="setFilterColor('blue')" class="w-5 h-5 rounded-full bg-blue-500 hover:scale-110 transition-transform cursor-pointer color-filter-pill" title="Filter Blue Tag" data-color="blue"></button>
+                        <button onclick="setFilterColor('emerald')" class="w-5 h-5 rounded-full bg-emerald-500 hover:scale-110 transition-transform cursor-pointer color-filter-pill" title="Filter Green Tag" data-color="emerald"></button>
+                        <button onclick="setFilterColor('amber')" class="w-5 h-5 rounded-full bg-amber-500 hover:scale-110 transition-transform cursor-pointer color-filter-pill" title="Filter Yellow Tag" data-color="amber"></button>
+                        <button onclick="setFilterColor('purple')" class="w-5 h-5 rounded-full bg-purple-500 hover:scale-110 transition-transform cursor-pointer color-filter-pill" title="Filter Purple Tag" data-color="purple"></button>
+                    </div>
+                </div>
+
+                <!-- Right Action Controls-->
+                <div class="order-2 md:order-3 flex items-center gap-1 sm:gap-2 lg:gap-3 shrink min-w-0">
+                    <!-- PWA Install App Button (Auto-shows when browser allows PWA installation) -->
+                    <button id="pwaInstallBtn" onclick="installPwaApp()" class="hidden px-2.5 xl:px-3.5 py-2 border border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0" title="Install Rx Cloude as Web App">
+                        <i data-lucide="download" class="w-4 h-4 text-blue-600"></i> <span class="hidden xl:inline">Install App</span>
+                    </button>
+
+                    <!-- Grid / Table View Switch (compact on phones, padded on tablet+) -->
+                    <div class="flex items-center bg-gray-50 min-[420px]:p-1 rounded-xl border border-gray-200/80 shrink-0">
+                        <button onclick="switchViewMode('grid')" id="grid-view-btn" class="p-1.5 bg-white shadow-xs text-blue-600 rounded-lg transition-all cursor-pointer" title="Grid View" aria-label="Grid view">
+                            <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="switchViewMode('table')" id="list-view-btn" class="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg transition-all cursor-pointer" title="Table View" aria-label="Table view">
+                            <i data-lucide="list" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <!-- New Folder Button -->
+                    <button onclick="createNewFolderPrompt()" class="hdr-newfolder px-2.5 sm:px-3.5 py-2 border border-gray-200 hover:border-gray-300 text-gray-700 bg-white hover:bg-gray-50 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0" title="New Folder">
+                        <i data-lucide="folder-plus" class="w-4 h-4 text-blue-600"></i> <span class="hidden xl:inline">New Folder</span>
+                    </button>
+
+                    <!-- New Note / Code File Button -->
+                    <!-- New Note / Code File Button (hidden on small phones, available in the file menu) -->
+                    <button onclick="openNewNoteModal()" class="hidden sm:flex px-2.5 xl:px-3.5 py-2 border border-gray-200 hover:border-gray-300 text-gray-700 bg-white hover:bg-gray-50 text-xs font-semibold rounded-xl items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0" title="New Note / Text File">
+                        <i data-lucide="file-plus" class="w-4 h-4 text-emerald-600"></i> <span class="hidden xl:inline">New Note</span>
+                    </button>
+
+                    <!-- Upload Button -->
+                    <button onclick="openUploadModal()" class="hdr-upload px-2.5 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all shadow-sm shadow-blue-200 cursor-pointer shrink-0" title="Upload Files">
+                        <i data-lucide="upload" class="w-4 h-4"></i> <span class="hidden lg:inline">Upload</span>
+                    </button>
+
+                    <!-- User Profile Dropdown Badge -->
+                    <div class="hdr-profile flex items-center gap-2 pl-1.5 sm:pl-3 border-l border-gray-200 shrink-0 cursor-pointer md:cursor-default" onclick="if (window.innerWidth < 768) openMobileSidebar()" title="Account & menu">
+                        <div id="profile-avatar" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+                            A
+                        </div>
+                        <div class="hidden lg:block text-left">
+                            <div id="profile-name" class="font-semibold text-xs text-gray-800 leading-tight">Admin</div>
+                            <div id="profile-role" class="text-[10px] text-gray-400">Super Admin</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dedicated Mobile/Tablet Horizontal Category Scroll Bar (Visible below 1680px) -->
+            <div id="mobileFilterRow" class="min-[1680px]:hidden flex items-center gap-1.5 overflow-x-auto px-2.5 py-2 bg-white border-b border-gray-200/80 no-scrollbar text-xs sticky top-16 z-10 shrink-0 shadow-xs">
+                <button onclick="setFilterCategory('all')" class="cat-pill px-3 py-1.5 rounded-full font-semibold transition-colors cursor-pointer bg-blue-50 text-blue-600 shrink-0" data-cat="all">All</button>
+                <button onclick="setFilterCategory('starred')" class="cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100 shrink-0 flex items-center gap-1" data-cat="starred"><i data-lucide="star" class="w-3.5 h-3.5 text-amber-500"></i> Starred</button>
+                <button onclick="setFilterCategory('docs')" class="cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100 shrink-0" data-cat="docs">Docs</button>
+                <button onclick="setFilterCategory('images')" class="cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100 shrink-0" data-cat="images">Images</button>
+                <button onclick="setFilterCategory('media')" class="cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100 shrink-0" data-cat="media">Media</button>
+                <button onclick="setFilterCategory('code')" class="cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100 shrink-0" data-cat="code">Code</button>
+                <button onclick="setFilterCategory('zip')" class="cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100 shrink-0" data-cat="zip">Zip</button>
+            </div>
+
+            <!-- Dashboard Content Body (Responsive Padding) -->
+            <div id="main-content" class="p-3 sm:p-6 md:p-8 max-w-7xl mx-auto w-full">
+                
+                <!-- VIEW 1: MY DRIVE -->
+                <div id="view-drive">
+                    <!-- Breadcrumbs navigation -->
+                    <div id="breadcrumb-container" class="flex items-center gap-1.5 sm:gap-2 text-xs text-gray-500 mb-5 overflow-x-auto no-scrollbar py-1">
+                        <!-- Dynamic Breadcrumbs -->
+                    </div>
+
+                    <!-- Folders Section -->
+                    <div id="folders-container-wrapper" class="mb-8">
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <i data-lucide="folder" class="w-3.5 h-3.5 text-amber-500"></i> Folders <span id="folders-count" class="section-count">0</span>
+                            </h2>
+                        </div>
+                        <div id="folders-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                            <!-- Dynamic Folders populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Files Section -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <i data-lucide="file-text" class="w-3.5 h-3.5 text-blue-500"></i> Files <span id="file-count" class="section-count">0</span>
+                            </h2>
+                            <div class="flex items-center gap-2">
+                                <button onclick="selectAllVisibleFiles()" id="btn-select-all" class="text-xs text-gray-500 hover:text-blue-600 font-medium cursor-pointer flex items-center gap-1 transition-colors">
+                                    <i data-lucide="check-square" class="w-3.5 h-3.5"></i> Select All
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- FLOATING BULK SELECTION ACTION BAR -->
+                        <div id="bulk-action-bar" class="hidden mb-4 p-3 bg-blue-50/95 border border-blue-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs transition-all animate-in fade-in slide-in-from-top-2 duration-150">
+                            <div class="flex items-center justify-between w-full sm:w-auto gap-2 pl-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
+                                    <span id="bulk-selected-count" class="font-bold text-xs text-blue-900">0 items selected</span>
+                                </div>
+                                <button onclick="clearSelection()" class="sm:hidden p-1 text-gray-400 hover:text-gray-600 rounded-lg cursor-pointer" title="Deselect all">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                                <button onclick="openCompressModal()" class="flex-1 sm:flex-initial px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer" title="Compress into ZIP archive">
+                                    <i data-lucide="file-archive" class="w-3.5 h-3.5"></i> Compress ZIP
+                                </button>
+                                <button onclick="moveSelectedToVault()" class="flex-1 sm:flex-initial px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer" title="Move to Private Secure Vault">
+                                    <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> Lock into Vault
+                                </button>
+                                <button onclick="downloadSelectedAsZip()" class="flex-1 sm:flex-initial px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm shadow-blue-200 transition-all cursor-pointer">
+                                    <i data-lucide="archive" class="w-3.5 h-3.5"></i> Download ZIP
+                                </button>
+                                <button onclick="deleteSelectedBulk()" class="flex-1 sm:flex-initial px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Move to Trash
+                                </button>
+                                <button onclick="clearSelection()" class="hidden sm:inline-flex p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-white transition-colors cursor-pointer" title="Deselect all">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Grid View for Files -->
+                        <div id="files-grid-view" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 hidden">
+                            <!-- Dynamic Grid Cards -->
+                        </div>
+
+                        <!-- Table View for Files -->
+                        <div id="files-table-view" class="bg-white border border-gray-200/80 rounded-2xl overflow-x-auto shadow-xs">
+                            <table class="w-full text-left border-collapse min-w-[620px] sm:min-w-full">
+                                <thead>
+                                    <tr class="border-b border-gray-200 bg-gray-50/50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                        <th class="py-3.5 px-4 w-10 text-center">
+                                            <input type="checkbox" id="th-select-all" onchange="toggleSelectAllTable(this.checked)" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer">
+                                        </th>
+                                        <th class="py-3.5 px-4">Name</th>
+                                        <th class="py-3.5 px-6">Owner</th>
+                                        <th class="py-3.5 px-6">Modified</th>
+                                        <th class="py-3.5 px-6">Size</th>
+                                        <th class="py-3.5 px-6 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="files-table-body" class="divide-y divide-gray-100 text-sm">
+                                    <!-- Dynamic Table Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW 2: USERS & PERMISSIONS MANAGEMENT (Admin) -->
+                <div id="view-users" class="hidden">
+                    <!-- Global Server & Storage Settings Card (Admin Only) -->
+                    <div class="mb-6 p-4 sm:p-5 bg-white border border-gray-200/90 rounded-2xl shadow-xs">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                            <div class="flex items-center gap-2.5">
+                                <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                                    <i data-lucide="sliders" class="w-4 h-4"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-bold text-gray-900">Global Server & Upload Settings</h3>
+                                    <p class="text-xs text-gray-400">Configure global file upload restrictions and user registration</p>
+                                </div>
+                            </div>
+                            <button onclick="saveGlobalServerConfig()" id="btnSaveConfig" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm shadow-blue-200 transition-all cursor-pointer flex items-center gap-1.5 self-end sm:self-auto">
+                                <i data-lucide="save" class="w-3.5 h-3.5"></i> Save Settings
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Global Max File Upload Limit -->
+                            <div class="p-3.5 bg-gray-50/70 border border-gray-200/70 rounded-xl">
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <label for="settingMaxUploadMB" class="text-xs font-semibold text-gray-700">Max Single File Upload Limit (MB)</label>
+                                    <span class="text-[11px] font-mono font-bold text-blue-600" id="currentLimitBadge">1024 MB (1 GB)</span>
+                                </div>
+                                <div class="flex gap-2 mb-2">
+                                    <input type="number" id="settingMaxUploadMB" min="0" value="1024" placeholder="0 = Unlimited" class="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                                </div>
+                                <!-- Quick presets -->
+                                <div class="flex items-center gap-1.5 overflow-x-auto text-[10px] text-gray-600 no-scrollbar">
+                                    <button type="button" onclick="setSettingPreset(100)" class="px-2 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer shrink-0">100 MB</button>
+                                    <button type="button" onclick="setSettingPreset(500)" class="px-2 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer shrink-0">500 MB</button>
+                                    <button type="button" onclick="setSettingPreset(1024)" class="px-2 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer shrink-0">1 GB</button>
+                                    <button type="button" onclick="setSettingPreset(2048)" class="px-2 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer shrink-0">2 GB</button>
+                                    <button type="button" onclick="setSettingPreset(5120)" class="px-2 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer shrink-0">5 GB</button>
+                                    <button type="button" onclick="setSettingPreset(0)" class="px-2 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer shrink-0">Unlimited</button>
+                                </div>
+                            </div>
+
+                            <!-- Public User Registration -->
+                            <div class="p-3.5 bg-gray-50/70 border border-gray-200/70 rounded-xl flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between">
+                                        <label for="settingAllowRegistration" class="text-xs font-semibold text-gray-700 cursor-pointer">Allow Public Self-Registration</label>
+                                        <input type="checkbox" id="settingAllowRegistration" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer">
+                                    </div>
+                                    <p class="text-[11px] text-gray-400 mt-1">When enabled, visitors on the login page can register their own accounts with their own isolated drive space.</p>
+                                </div>
+                                <div class="text-[10px] text-gray-500 mt-3 pt-2 border-t border-gray-200/60 flex items-center gap-1">
+                                    <i data-lucide="shield" class="w-3.5 h-3.5 text-blue-500"></i> Self-registered users are restricted to their own private folder.
+                                </div>
+                            </div>
+
+                            <!-- Session Length -->
+                            <div class="p-3.5 bg-gray-50/70 border border-gray-200/70 rounded-xl">
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <label for="settingSessionDays" class="text-xs font-semibold text-gray-700">Login Session Length (days)</label>
+                                    <span class="text-[11px] font-mono font-bold text-blue-600" id="currentSessionBadge">7 days</span>
+                                </div>
+                                <input type="number" id="settingSessionDays" min="1" max="365" value="7" placeholder="7" class="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                                <div class="flex items-center gap-1.5 mt-2 text-[10px] text-gray-600">
+                                    <button type="button" onclick="setSessionDaysPreset(1)" class="px-2 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">1 day</button>
+                                    <button type="button" onclick="setSessionDaysPreset(7)" class="px-2 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">7 days</button>
+                                    <button type="button" onclick="setSessionDaysPreset(30)" class="px-2 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">30 days</button>
+                                    <button type="button" onclick="setSessionDaysPreset(90)" class="px-2 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">90 days</button>
+                                </div>
+                                <p class="text-[11px] text-gray-400 mt-2">Applies to newly issued logins. Existing sessions keep their original expiry.</p>
+                            </div>
+
+                            <!-- Build Information -->
+                            <div class="p-3.5 bg-gray-50/70 border border-gray-200/70 rounded-xl flex flex-col justify-between">
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <label class="text-xs font-semibold text-gray-700">Server Build</label>
+                                    <span class="text-[11px] font-mono font-bold text-emerald-600" id="serverVersionBadge">v-</span>
+                                </div>
+                                <p class="text-[11px] text-gray-400">Version reported by the running server engine.</p>
+                                <div class="text-[10px] text-gray-500 mt-3 pt-2 border-t border-gray-200/60 flex items-center gap-1">
+                                    <i data-lucide="info" class="w-3.5 h-3.5 text-emerald-500"></i> <span id="serverEnvBadge">Node runtime unknown</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                        <div>
+                            <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Users & Access Control</h1>
+                            <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Create users, manage passwords, permissions, and directory scopes.</p>
+                        </div>
+                        <button onclick="openCreateUserModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-xl flex items-center gap-2 shadow-sm text-sm cursor-pointer shrink-0">
+                            <i data-lucide="user-plus" class="w-4 h-4"></i> Add User
+                        </button>
+                    </div>
+
+                    <div class="bg-white border border-gray-200 rounded-2xl overflow-x-auto shadow-xs">
+                        <table class="w-full text-left border-collapse min-w-[580px] sm:min-w-full">
+                            <thead>
+                                <tr class="border-b border-gray-200 bg-gray-50/50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    <th class="py-3 px-6">Username</th>
+                                    <th class="py-3 px-6">Role</th>
+                                    <th class="py-3 px-6">Folder Access Scope</th>
+                                    <th class="py-3 px-6">Quota</th>
+                                    <th class="py-3 px-6 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body" class="divide-y divide-gray-100 text-sm">
+                                <!-- Users rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- VIEW 3: TRASH BIN -->
+                <div id="view-trash" class="hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                        <div>
+                            <h1 class="text-xl sm:text-2xl font-bold text-gray-900">Trash Bin</h1>
+                            <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Items in trash can be restored back to their original folder or permanently deleted.</p>
+                        </div>
+                        <button onclick="emptyTrashAll()" id="btnEmptyTrash" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium py-2 px-4 rounded-xl flex items-center gap-2 border border-red-200 text-sm cursor-pointer transition-colors shrink-0">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i> Empty Trash
+                        </button>
+                    </div>
+
+                    <div class="bg-white border border-gray-200 rounded-2xl overflow-x-auto shadow-xs">
+                        <table class="w-full text-left border-collapse min-w-[580px] sm:min-w-full">
+                            <thead>
+                                <tr class="border-b border-gray-200 bg-gray-50/50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    <th class="py-3 px-6">Name</th>
+                                    <th class="py-3 px-6">Original Location</th>
+                                    <th class="py-3 px-6">Size</th>
+                                    <th class="py-3 px-6">Deleted Date</th>
+                                    <th class="py-3 px-6 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trash-table-body" class="divide-y divide-gray-100 text-sm">
+                                <!-- Dynamic Trash rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- VIEW 4: STARRED ITEMS -->
+                <div id="view-starred" class="hidden">
+                    <div class="mb-6">
+                        <h1 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2"><i data-lucide="star" class="w-6 h-6 text-amber-400 fill-amber-400"></i> Starred & Tagged</h1>
+                        <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Quick access to your favourite and color-tagged files & folders across the whole drive.</p>
+                    </div>
+                    <div id="starred-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+                </div>
+
+                <!-- VIEW 5: SECURE VAULT -->
+                <div id="view-vault" class="hidden">
+                    <!-- Locked State -->
+                    <div id="vault-locked" class="max-w-sm mx-auto mt-6 sm:mt-12 bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-xl text-center">
+                        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-purple-200">
+                            <i data-lucide="lock" class="w-8 h-8"></i>
+                        </div>
+                        <h2 id="vault-lock-title" class="text-lg font-bold text-gray-900">Secure Vault</h2>
+                        <p id="vault-lock-desc" class="text-xs text-gray-500 mt-1 mb-5">Enter your PIN to unlock private files.</p>
+                        <form id="vaultPinForm" onsubmit="submitVaultPin(); return false;">
+                            <input type="password" id="vaultPinInput" inputmode="numeric" maxlength="8" autocomplete="off" aria-label="Vault PIN" placeholder="••••" class="w-full text-center tracking-[0.6em] text-xl font-bold px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-600">
+                            <input type="password" id="vaultPinConfirm" inputmode="numeric" maxlength="8" autocomplete="off" aria-label="Confirm vault PIN" placeholder="Confirm PIN" class="hidden mt-2 w-full text-center tracking-[0.4em] text-base font-bold px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-600">
+                            <div id="vaultError" class="hidden mt-3 p-2.5 bg-red-50 text-red-600 text-xs rounded-xl"></div>
+                            <button type="submit" id="vaultSubmitBtn" class="mt-4 w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-purple-200 transition-all cursor-pointer">Unlock Vault</button>
+                        </form>
+                    </div>
+                    <!-- Unlocked State -->
+                    <div id="vault-unlocked" class="hidden">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                            <div>
+                                <h1 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2"><i data-lucide="shield-check" class="w-6 h-6 text-purple-600"></i> Secure Vault</h1>
+                                <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Hidden from the drive, search, shares and cleaner. Auto-locks after 2 hours.</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="openChangeVaultPin()" class="px-3.5 py-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-xl flex items-center gap-1.5 cursor-pointer"><i data-lucide="key-round" class="w-4 h-4"></i> Change PIN</button>
+                                <button onclick="lockVault()" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer"><i data-lucide="lock" class="w-4 h-4"></i> Lock Now</button>
+                            </div>
+                        </div>
+                        <div id="vault-files" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Direct Multipart / File Uploader Modal matching CloudDrive Pro reference -->
+    <div id="uploadModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs hidden items-center justify-center z-50 p-3 sm:p-4">
+        <div class="bg-white rounded-2xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-7 shadow-2xl border border-gray-100 max-h-[94vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex justify-between items-start mb-5 sm:mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-blue-50 text-blue-600 rounded-xl shrink-0">
+                        <i data-lucide="cloud-upload" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900 leading-tight">Upload Files</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">High-speed stream ingestion with real-time preview generation</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <span id="modal-max-upload-badge" class="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg text-[10px] font-bold whitespace-nowrap">Max: -</span>
+                    <button onclick="closeUploadModal()" class="text-gray-400 hover:text-gray-600 cursor-pointer p-1" aria-label="Close upload dialog">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Drag & Drop Zone -->
+            <div id="drop-zone" class="border-2 border-dashed border-gray-200 hover:border-blue-400 rounded-2xl p-6 sm:p-10 text-center bg-gray-50/60 transition-all cursor-pointer flex flex-col items-center justify-center relative group">
+                <input type="file" id="file-input-hidden" multiple class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleFileSelect(event)" aria-label="Select files to upload">
+                <input type="file" id="folder-input-hidden" webkitdirectory directory multiple class="hidden" onchange="handleFileSelect(event)" aria-label="Select a folder to upload">
+                <div class="p-3 bg-blue-50 text-blue-600 rounded-full mb-3 shadow-xs group-hover:scale-105 transition-transform">
+                    <i data-lucide="cloud-upload" class="w-7 h-7"></i>
+                </div>
+                <h4 class="font-bold text-sm text-gray-800 mb-1">Drag & drop files or folders</h4>
+                <p id="upload-limit-note" class="text-xs text-gray-400 mb-5 max-w-xs leading-relaxed">Images, PDFs, documents, media, and archives. Directory hierarchy preserved.</p>
+                <div class="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 w-full sm:w-auto justify-center">
+                    <button type="button" onclick="document.getElementById('file-input-hidden').click()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md shadow-blue-200 cursor-pointer">
+                        Select Files
+                    </button>
+                    <button type="button" onclick="document.getElementById('folder-input-hidden').click()" class="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
+                        <i data-lucide="folder-up" class="w-4 h-4 text-blue-600"></i> Select Folder
+                    </button>
+                </div>
+            </div>
+
+            <!-- Upload progress indicator -->
+            <div id="upload-progress-container" class="mt-4 hidden">
+                <div class="flex justify-between text-xs text-gray-600 mb-1">
+                    <span id="upload-status-text">Uploading files...</span>
+                    <span id="upload-percentage">0%</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                    <div id="upload-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="mt-5 sm:mt-6 flex justify-end">
+                <button onclick="closeUploadModal()" class="px-5 py-2 text-gray-600 hover:text-gray-900 text-xs font-semibold rounded-xl hover:bg-gray-100 cursor-pointer transition-colors">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Link Modal matching CloudDrive Pro reference (z-[60] so it sits above preview modal) -->
+    <div id="shareModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden items-center justify-center z-[60] p-3 sm:p-4">
+        <div class="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-gray-100 max-h-[94vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex justify-between items-start mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-blue-50 text-blue-600 rounded-xl shrink-0">
+                        <i data-lucide="share-2" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900">Share File</h3>
+                        <p class="text-xs text-gray-400 truncate max-w-[200px] sm:max-w-[240px]" id="share-file-name">filename.ext</p>
+                    </div>
+                </div>
+                <button onclick="closeShareModal()" aria-label="Close share dialog" class="text-gray-400 hover:text-gray-600 cursor-pointer p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Link Expiration Selection -->
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-gray-700 mb-2">Link Expiration</label>
+                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs pb-1" id="shareExpiryOptions">
+                    <button type="button" onclick="setShareExpiry(1, this)" class="share-expiry-btn px-3 py-1.5 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 cursor-pointer shrink-0">1 Hour</button>
+                    <button type="button" onclick="setShareExpiry(24, this)" class="share-expiry-btn px-3 py-1.5 bg-blue-600 text-white rounded-xl font-semibold cursor-pointer shrink-0">24 Hours</button>
+                    <button type="button" onclick="setShareExpiry(168, this)" class="share-expiry-btn px-3 py-1.5 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 cursor-pointer shrink-0">7 Days</button>
+                    <button type="button" onclick="setShareExpiry(0, this)" class="share-expiry-btn px-3 py-1.5 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 cursor-pointer shrink-0">Never</button>
+                </div>
+            </div>
+
+            <!-- Password Protection Toggle -->
+            <label for="sharePasswordCheckbox" class="p-3 border border-gray-200 rounded-xl flex items-center justify-between mb-3 bg-gray-50/50 cursor-pointer select-none hover:bg-gray-100/50 transition-colors">
+                <div class="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                    <i data-lucide="lock" class="w-4 h-4 text-blue-600"></i> Require Password
+                </div>
+                <input type="checkbox" id="sharePasswordCheckbox" onchange="toggleSharePasswordInput(this.checked)" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer">
+            </label>
+            <div id="sharePasswordContainer" class="hidden mb-4">
+                <form id="sharePasswordForm" onsubmit="return false;">
+                    <input type="password" id="sharePasswordValue" minlength="3" autocomplete="new-password" aria-label="Password for this share link" placeholder="Enter link password (e.g. 123456)" class="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                    <p class="text-[11px] text-gray-400 mt-1.5">At least 3 digits. Anyone opening the link must enter this.</p>
+                </form>
+            </div>
+
+            <!-- Optional Max Downloads Limit -->
+            <div class="mb-4">
+                <label for="shareMaxDownloads" class="block text-xs font-semibold text-gray-700 mb-1.5">Max Downloads (Optional)</label>
+                <input type="number" id="shareMaxDownloads" min="0" placeholder="Unlimited (or enter limit e.g. 5)" class="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+            </div>
+
+            <!-- Generate Action Button -->
+            <button type="button" id="btnGenerateShare" onclick="generateShareLink()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-200 transition-all cursor-pointer flex items-center justify-center gap-2">
+                <i data-lucide="link" class="w-4 h-4"></i> Generate Secure Share Link
+            </button>
+
+            <!-- Result Box (Appears after generated) -->
+            <div id="shareResultContainer" class="mt-4 pt-4 border-t border-gray-100 hidden">
+                <label class="block text-[11px] font-semibold text-gray-500 mb-1.5">Public Branded Download Link</label>
+                <div class="flex gap-2 mb-2">
+                    <input type="text" id="share-link-input" readonly aria-label="Public share link" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-700 font-mono focus:outline-none select-all">
+                    <button onclick="copyShareLink()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer shrink-0 flex items-center gap-1">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
+                    </button>
+                </div>
+                <div class="flex items-center justify-between text-[11px]">
+                    <span class="text-emerald-600 font-semibold flex items-center gap-1"><i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Ready to send</span>
+                    <a id="share-open-tab" href="#" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1 font-medium">
+                        Open Page <i data-lucide="external-link" class="w-3 h-3"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- In-Browser Code & Note Editor Modal -->
+    <div id="codeEditorModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center z-[70] p-2 sm:p-4 md:p-6">
+        <div class="bg-white rounded-2xl sm:rounded-3xl max-w-5xl w-full h-[95vh] sm:h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-150">
+            <!-- Editor Header -->
+            <div class="px-4 sm:px-6 py-3 border-b border-gray-200 bg-white flex justify-between items-center shrink-0 gap-2">
+                <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div class="p-2 bg-blue-50 text-blue-600 rounded-xl shrink-0">
+                        <i data-lucide="code-2" class="w-5 h-5" id="editorHeaderIcon"></i>
+                    </div>
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <input type="text" id="editorFileName" placeholder="filename.txt" class="font-bold text-sm sm:text-base text-gray-900 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-600 focus:bg-gray-50 px-1 py-0.5 rounded outline-none transition-all truncate w-full max-w-xs sm:max-w-md">
+                        <span id="editorLanguageBadge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600 shrink-0">PLAIN TEXT</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <button type="button" id="btnEditorMdToggle" onclick="toggleEditorMarkdownPreview()" class="px-2.5 sm:px-3.5 py-1.5 border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer hidden" title="Toggle Markdown Live Preview">
+                        <i data-lucide="eye" class="w-3.5 h-3.5 text-gray-500"></i> <span class="hidden sm:inline">Preview</span>
+                    </button>
+                    <button type="button" onclick="saveEditorContent()" id="btnSaveEditor" class="px-3.5 sm:px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-sm shadow-blue-200 transition-all cursor-pointer">
+                        <i data-lucide="save" class="w-3.5 h-3.5"></i> <span>Save</span> <kbd class="hidden sm:inline text-[9px] bg-blue-500/60 px-1 rounded">Ctrl+S</kbd>
+                    </button>
+                    <button type="button" onclick="closeCodeEditorModal()" class="text-gray-400 hover:text-gray-700 hover:bg-gray-100 p-1.5 rounded-xl transition-colors cursor-pointer" title="Close Editor">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Editor Body (Gutter + Textarea + Preview) -->
+            <div class="flex-1 flex overflow-hidden bg-slate-50 relative">
+                <!-- Code Area with Line Numbers -->
+                <div id="editorRawSection" class="flex-1 flex overflow-hidden bg-white">
+                    <div id="editorLineNumbers" class="w-12 sm:w-14 py-3 bg-gray-50/80 border-r border-gray-200 text-right pr-3 font-mono text-xs text-gray-400 select-none overflow-hidden shrink-0 leading-6">
+                        1
+                    </div>
+                    <textarea id="editorTextarea" spellcheck="false" placeholder="Start typing or pasting notes/code here..." class="flex-1 p-3 font-mono text-xs sm:text-sm text-gray-800 bg-white resize-none outline-none overflow-auto leading-6 select-text whitespace-pre"></textarea>
+                </div>
+
+                <!-- Markdown Live Preview Pane (Toggled on .md files) -->
+                <div id="editorPreviewSection" class="w-1/2 border-l border-gray-200 bg-white p-5 sm:p-6 overflow-y-auto hidden text-xs sm:text-sm text-gray-800">
+                    <div id="editorMarkdownOutput" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <!-- Editor Footer Stats -->
+            <div class="px-4 py-2 bg-gray-50 border-t border-gray-200 flex items-center justify-between text-[11px] text-gray-500 shrink-0 font-mono">
+                <div class="flex items-center gap-3">
+                    <span id="editorStatsLines">Lines: 1</span>
+                    <span>•</span>
+                    <span id="editorStatsWords">Words: 0</span>
+                    <span>•</span>
+                    <span id="editorStatsChars">Chars: 0</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="editorSaveStatus" class="text-gray-400 font-sans">Ready</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Folder Modal with Color Tags matching CloudDrive Pro reference -->
+    <div id="newFolderModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex justify-between items-center mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                        <i data-lucide="folder-plus" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-gray-900">Create New Folder</h3>
+                </div>
+                <button onclick="closeNewFolderModal()" aria-label="Close new folder dialog" class="text-gray-400 hover:text-gray-600 cursor-pointer p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="newFolderForm" class="space-y-4">
+                <div>
+                    <label for="newFolderNameInput" class="block text-xs font-semibold text-gray-700 mb-1.5">Folder Name</label>
+                    <input type="text" id="newFolderNameInput" required placeholder="e.g. Marketing Assets" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-2">Color Tag</label>
+                    <div class="flex items-center gap-3" id="color-tag-picker">
+                        <button type="button" onclick="selectFolderColor('blue')" aria-label="Set folder colour blue" class="w-7 h-7 rounded-full bg-blue-500 ring-2 ring-offset-2 ring-blue-600 transition-all cursor-pointer color-tag-btn" data-color="blue"></button>
+                        <button type="button" onclick="selectFolderColor('emerald')" aria-label="Set folder colour emerald" class="w-7 h-7 rounded-full bg-emerald-500 ring-0 ring-offset-2 ring-emerald-600 transition-all cursor-pointer color-tag-btn" data-color="emerald"></button>
+                        <button type="button" onclick="selectFolderColor('purple')" aria-label="Set folder colour purple" class="w-7 h-7 rounded-full bg-purple-500 ring-0 ring-offset-2 ring-purple-600 transition-all cursor-pointer color-tag-btn" data-color="purple"></button>
+                        <button type="button" onclick="selectFolderColor('amber')" aria-label="Set folder colour amber" class="w-7 h-7 rounded-full bg-amber-500 ring-0 ring-offset-2 ring-amber-600 transition-all cursor-pointer color-tag-btn" data-color="amber"></button>
+                        <button type="button" onclick="selectFolderColor('rose')" aria-label="Set folder colour rose" class="w-7 h-7 rounded-full bg-rose-500 ring-0 ring-offset-2 ring-rose-600 transition-all cursor-pointer color-tag-btn" data-color="rose"></button>
+                        <button type="button" onclick="selectFolderColor('slate')" aria-label="Set folder colour slate" class="w-7 h-7 rounded-full bg-slate-500 ring-0 ring-offset-2 ring-slate-600 transition-all cursor-pointer color-tag-btn" data-color="slate"></button>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-3">
+                    <button type="button" onclick="closeNewFolderModal()" class="px-4 py-2 border border-gray-200 text-gray-600 text-xs font-medium rounded-xl hover:bg-gray-50 cursor-pointer">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-blue-200 cursor-pointer transition-all">Create Folder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Rename Modal matching CloudDrive Pro reference -->
+    <div id="renameModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex justify-between items-center mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                        <i data-lucide="edit-3" class="w-5 h-5"></i>
+                    </div>
+                    <h3 id="renameModalTitle" class="text-base font-bold text-gray-900">Rename Item</h3>
+                </div>
+                <button onclick="closeRenameModal()" aria-label="Close rename dialog" class="text-gray-400 hover:text-gray-600 cursor-pointer p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="renameForm" class="space-y-4">
+                <div>
+                    <label for="renameInput" class="block text-xs font-semibold text-gray-700 mb-1.5">New Name</label>
+                    <input type="text" id="renameInput" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all">
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeRenameModal()" class="px-4 py-2 border border-gray-200 text-gray-600 text-xs font-medium rounded-xl hover:bg-gray-50 cursor-pointer">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-blue-200 cursor-pointer transition-all">Save Rename</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePassModal" class="fixed inset-0 bg-black/50 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-base sm:text-lg font-bold text-gray-900">Change Password</h3>
+                <button onclick="closeChangePassModal()" aria-label="Close change password dialog" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div id="changePassForcedNote" class="hidden mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl">
+                This is your first sign-in. Choose your own password to continue.
+            </div>
+            <form id="changePassForm" class="space-y-4">
+                <div>
+                    <label for="currentPasswordInput" class="block text-xs font-semibold text-gray-700 mb-1">Current Password</label>
+                    <input type="password" id="currentPasswordInput" required autocomplete="current-password" placeholder="••••••••" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                </div>
+                <div>
+                    <label for="newPasswordInput" class="block text-xs font-semibold text-gray-700 mb-1">New Password</label>
+                    <input type="password" id="newPasswordInput" required placeholder="••••••••" minlength="4" autocomplete="new-password" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                    <p class="text-[11px] text-gray-400 mt-1.5">At least 4 characters, and different from the current one.</p>
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeChangePassModal()" class="px-4 py-2 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 cursor-pointer">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 shadow-sm cursor-pointer">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create User Modal -->
+    <div id="createUserModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl border border-gray-100 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex justify-between items-start mb-5 pb-3 border-b border-gray-100">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-blue-50 text-blue-600 rounded-2xl shrink-0">
+                        <i data-lucide="user-plus" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900 leading-tight">Create New User</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Provision a new account with custom permissions & quota</p>
+                    </div>
+                </div>
+                <button onclick="closeCreateUserModal()" aria-label="Close user dialog" class="text-gray-400 hover:text-gray-600 cursor-pointer p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="createUserForm" class="space-y-4">
+                <!-- Username -->
+                <div>
+                    <label for="modalUsername" class="block text-xs font-semibold text-gray-700 mb-1">Username</label>
+                    <div class="relative">
+                        <input type="text" id="modalUsername" required placeholder="e.g. john_doe" class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                    </div>
+                </div>
+
+                <!-- Password with Generator -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="modalPassword" class="block text-xs font-semibold text-gray-700">Password</label>
+                        <button type="button" onclick="generateRandomUserPassword()" class="text-[11px] text-blue-600 hover:underline font-semibold flex items-center gap-1 cursor-pointer">
+                            <i data-lucide="wand-2" class="w-3 h-3"></i> Generate Password
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="modalPassword" required placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                    </div>
+                </div>
+
+                <!-- Role & Quota -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="modalRole" class="block text-xs font-semibold text-gray-700 mb-1">Account Role</label>
+                        <select id="modalRole" class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 focus:outline-none">
+                            <option value="user">Standard User</option>
+                            <option value="admin">Administrator (Full Access)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="modalQuota" class="block text-xs font-semibold text-gray-700 mb-1">Storage Quota (MB)</label>
+                        <input type="number" id="modalQuota" value="1024" min="0" placeholder="0 = Unlimited" class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Quota Quick Presets -->
+                <div class="flex items-center gap-1.5 overflow-x-auto text-[10px] text-gray-600 no-scrollbar">
+                    <span class="text-gray-400 font-semibold shrink-0">Presets:</span>
+                    <button type="button" onclick="setUserQuotaPreset(250)" class="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 rounded-md cursor-pointer shrink-0">250 MB</button>
+                    <button type="button" onclick="setUserQuotaPreset(500)" class="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 rounded-md cursor-pointer shrink-0">500 MB</button>
+                    <button type="button" onclick="setUserQuotaPreset(1024)" class="px-2 py-0.5 bg-blue-50 text-blue-600 font-semibold rounded-md cursor-pointer shrink-0">1 GB</button>
+                    <button type="button" onclick="setUserQuotaPreset(5120)" class="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 rounded-md cursor-pointer shrink-0">5 GB</button>
+                    <button type="button" onclick="setUserQuotaPreset(0)" class="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 rounded-md cursor-pointer shrink-0">Unlimited</button>
+                </div>
+
+                <!-- Folder Scope Selection -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Folder Scope / Access Mode</label>
+                    <div class="space-y-2 text-xs">
+                        <label class="p-2.5 border border-blue-200 bg-blue-50/50 rounded-xl flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="folderModeRadio" value="own" checked onchange="handleFolderModeChange(this.value)" class="text-blue-600">
+                            <div>
+                                <div class="font-bold text-gray-800">Isolated Personal Folder (Recommended)</div>
+                                <div class="text-[10px] text-gray-500">Auto-created at <code class="text-blue-600">/users/{username}</code></div>
+                            </div>
+                        </label>
+                        <label class="p-2.5 border border-gray-200 hover:bg-gray-50 rounded-xl flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="folderModeRadio" value="global" onchange="handleFolderModeChange(this.value)" class="text-blue-600">
+                            <div>
+                                <div class="font-bold text-gray-800">Global Shared Drive Access</div>
+                                <div class="text-[10px] text-gray-500">Can view and access all root drive folders</div>
+                            </div>
+                        </label>
+                        <label class="p-2.5 border border-gray-200 hover:bg-gray-50 rounded-xl flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="folderModeRadio" value="custom" onchange="handleFolderModeChange(this.value)" class="text-blue-600">
+                            <div>
+                                <div class="font-bold text-gray-800">Custom Subfolder Path</div>
+                                <div class="text-[10px] text-gray-500">Restrict user to a specific folder path</div>
+                            </div>
+                        </label>
+                    </div>
+                    <div id="customScopeContainer" class="hidden mt-2">
+                        <input type="text" id="modalFolderScope" placeholder="e.g. clients/project_a" aria-label="Folder scope path" class="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-gray-700 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Granular Permissions Grid -->
+                <div class="pt-2 border-t border-gray-100">
+                    <label class="block text-xs font-semibold text-gray-700 mb-2">Permissions Checklist</label>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <label class="flex items-center gap-2 text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="permUpload" checked class="w-4 h-4 text-blue-600 rounded border-gray-300"> Can Upload Files
+                        </label>
+                        <label class="flex items-center gap-2 text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="permDownload" checked class="w-4 h-4 text-blue-600 rounded border-gray-300"> Can Download
+                        </label>
+                        <label class="flex items-center gap-2 text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="permCreateFolder" checked class="w-4 h-4 text-blue-600 rounded border-gray-300"> Can Create Folders
+                        </label>
+                        <label class="flex items-center gap-2 text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="permRename" checked class="w-4 h-4 text-blue-600 rounded border-gray-300"> Can Rename & Move
+                        </label>
+                        <label class="flex items-center gap-2 text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="permDelete" checked class="w-4 h-4 text-blue-600 rounded border-gray-300"> Can Delete / Trash
+                        </label>
+                        <label class="flex items-center gap-2 text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="permShare" checked class="w-4 h-4 text-blue-600 rounded border-gray-300"> Can Create Shares
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-3 border-t border-gray-100">
+                    <button type="button" onclick="closeCreateUserModal()" class="px-4 py-2 border border-gray-200 text-gray-600 text-xs font-medium rounded-xl hover:bg-gray-50 cursor-pointer">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-blue-200 cursor-pointer transition-all flex items-center gap-1.5">
+                        <i data-lucide="user-check" class="w-4 h-4"></i> Create Account
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Full Preview Modal matching CloudDrive Pro reference -->
+    <div id="previewModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-2 sm:p-4 md:p-6">
+        <div class="bg-white rounded-2xl sm:rounded-3xl max-w-5xl w-full h-[95vh] sm:h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-150">
+            <!-- Modal Header -->
+            <div class="px-4 sm:px-6 py-3 border-b border-gray-200/90 flex justify-between items-center bg-white shrink-0 gap-2">
+                <div class="flex items-center gap-2 sm:gap-3 min-w-0 pr-2">
+                    <div class="p-2 bg-blue-50 text-blue-600 rounded-xl shrink-0">
+                        <i data-lucide="file-text" class="w-5 h-5"></i>
+                    </div>
+                    <div class="truncate">
+                        <h3 id="previewTitle" class="font-bold text-gray-900 text-sm truncate">Preview</h3>
+                        <p id="previewSubtitle" class="text-[11px] text-gray-400 truncate">File Details</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <button id="btnPreviewMiniPlayer" onclick="popoutToMiniPlayer()" class="px-2.5 sm:px-3.5 py-1.5 border border-blue-200 text-blue-600 bg-blue-50/50 hover:bg-blue-100/50 text-xs font-semibold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs transition-all hidden" title="Play in Floating Mini-Player">
+                        <i data-lucide="picture-in-picture" class="w-3.5 h-3.5 text-blue-600"></i> <span class="hidden sm:inline">Mini Player</span>
+                    </button>
+                    <button id="btnPreviewShare" class="px-2.5 sm:px-3.5 py-1.5 border border-gray-200 hover:border-gray-300 text-gray-700 bg-white hover:bg-gray-50 text-xs font-semibold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs transition-all" title="Share Link">
+                        <i data-lucide="share-2" class="w-3.5 h-3.5 text-gray-500"></i> <span class="hidden sm:inline">Share</span>
+                    </button>
+                    <button id="btnPreviewDownload" class="px-3 sm:px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-sm shadow-blue-200 transition-all" title="Download">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Download</span>
+                    </button>
+                    <button onclick="closePreviewModal()" class="text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl cursor-pointer p-1.5 transition-colors" title="Close Preview">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Modal Body -->
+            <div id="previewContent" class="flex-1 overflow-auto bg-slate-50 flex items-center justify-center p-2 sm:p-4">
+                <!-- Preview elements rendered dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Storage Breakdown Analytics Modal -->
+    <div id="storageAnalyticsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden items-center justify-center z-50 p-3 sm:p-4">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl border border-gray-100 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-start mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-blue-50 text-blue-600 rounded-xl shrink-0">
+                        <i data-lucide="pie-chart" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900 leading-tight">Storage Analytics Breakdown</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Real-time disk space distribution across all categories</p>
+                    </div>
+                </div>
+                <button onclick="closeStorageAnalyticsModal()" aria-label="Close storage analytics dialog" class="text-gray-400 hover:text-gray-600 cursor-pointer p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Total Usage Header Card -->
+            <div class="p-4 bg-gray-50/80 rounded-2xl border border-gray-200/80 mb-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                    <div>
+                        <div class="text-xs text-gray-500 font-medium">Total Used Space</div>
+                        <div class="text-xl sm:text-2xl font-black text-gray-900 flex items-baseline gap-2">
+                            <span id="storage-modal-total-used">0 MB</span>
+                            <span id="storage-modal-quota-text" class="text-xs font-semibold text-gray-400">of Unlimited</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs text-gray-500">
+                        <div><strong id="storage-modal-total-files" class="text-gray-800">0</strong> files</div>
+                        <span>•</span>
+                        <div><strong id="storage-modal-total-folders" class="text-gray-800">0</strong> folders</div>
+                    </div>
+                </div>
+
+                <!-- Multi-Colored Segmented Progress Bar -->
+                <div class="w-full h-3.5 bg-gray-200 rounded-full overflow-hidden flex shadow-inner" id="storage-segmented-bar">
+                    <!-- Segment divs with different colors -->
+                </div>
+
+                <!-- Legend -->
+                <div class="flex flex-wrap items-center gap-3 sm:gap-4 mt-3 text-[11px] text-gray-600 font-medium" id="storage-legend">
+                    <!-- Dynamic legend items -->
+                </div>
+            </div>
+
+            <!-- Categories Grid Breakdown -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="storage-categories-grid">
+                <!-- Dynamic Category Cards -->
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeStorageAnalyticsModal()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Audio / Video Mini-Player (PiP Player) -->
+    <div id="floatingMediaPlayer" class="fixed bottom-6 right-6 z-40 bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/90 shadow-2xl overflow-hidden transition-all duration-300 w-80 sm:w-96 hidden flex-col animate-in fade-in slide-in-from-bottom-4">
+        <!-- Mini Player Header -->
+        <div class="px-3.5 py-2.5 bg-gray-50/90 border-b border-gray-100 flex items-center justify-between select-none">
+            <div class="flex items-center gap-2 min-w-0 pr-2">
+                <div class="p-1.5 bg-blue-50 text-blue-600 rounded-lg shrink-0" id="miniPlayerIcon">
+                    <i data-lucide="music" class="w-4 h-4"></i>
+                </div>
+                <div class="truncate">
+                    <h4 id="miniPlayerTitle" class="text-xs font-bold text-gray-800 truncate">Song Title</h4>
+                    <p id="miniPlayerType" class="text-[10px] text-gray-400">Audio Track</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+                <button onclick="toggleMiniPlayerExpand()" id="miniPlayerExpandBtn" class="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer" title="Expand / Minimize Video">
+                    <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+                </button>
+                <button onclick="closeMiniPlayer()" class="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" title="Close Player">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
+        </div>
+        <!-- Mini Video Screen (Shown for video, hidden for audio) -->
+        <div id="miniVideoContainer" class="w-full h-48 bg-black relative hidden flex items-center justify-center overflow-hidden">
+            <video id="miniVideoElement" class="w-full h-full object-contain" playsinline></video>
+        </div>
+        <audio id="miniAudioElement" class="hidden"></audio>
+        
+        <!-- Controls Body -->
+        <div class="p-3 bg-white space-y-2">
+            <!-- Seek Progress Bar -->
+            <div class="flex items-center gap-2 text-[10px] text-gray-400 font-mono">
+                <span id="miniPlayerCurrentTime">0:00</span>
+                <input type="range" id="miniPlayerSeek" min="0" max="100" value="0" step="0.1" aria-label="Seek position" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                <span id="miniPlayerDuration">0:00</span>
+            </div>
+            <!-- Playback Buttons & Volume -->
+            <div class="flex items-center justify-between pt-1">
+                <div class="flex items-center gap-1.5">
+                    <button onclick="skipMediaTime(-10)" class="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer" title="Rewind 10s">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="toggleMediaPlayPause()" id="miniPlayerPlayBtn" aria-label="Play or pause" class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-200 transition-all cursor-pointer">
+                        <i data-lucide="play" class="w-4 h-4 fill-white" id="miniPlayIcon"></i>
+                    </button>
+                    <button onclick="skipMediaTime(10)" class="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer" title="Forward 10s">
+                        <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <!-- Volume slider -->
+                <div class="flex items-center gap-1.5">
+                    <button onclick="toggleMediaMute()" id="miniPlayerMuteBtn" aria-label="Mute or unmute" class="p-1 text-gray-400 hover:text-gray-700 cursor-pointer">
+                        <i data-lucide="volume-2" class="w-4 h-4" id="miniVolumeIcon"></i>
+                    </button>
+                    <input type="range" id="miniPlayerVolume" min="0" max="1" step="0.05" value="1" aria-label="Volume" class="w-16 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Banner (Responsive placement) -->
+    <div id="toast" class="fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 max-w-sm mx-auto sm:mx-0 bg-gray-900 text-white px-4 sm:px-5 py-3 rounded-xl shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-3 text-sm pointer-events-none">
+        <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400 shrink-0"></i>
+        <span id="toast-message" class="truncate">Action completed successfully.</span>
+    </div>
+
+    <!-- Compress to ZIP Modal -->
+    <div id="compressModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-gray-100">
+            <div class="flex justify-between items-center mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><i data-lucide="file-archive" class="w-5 h-5"></i></div>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900">Compress to ZIP</h3>
+                        <p id="compressCountText" class="text-[11px] text-gray-400">0 items</p>
+                    </div>
+                </div>
+                <button onclick="closeCompressModal()" aria-label="Close compress dialog" class="text-gray-400 hover:text-gray-600 cursor-pointer p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <label for="compressNameInput" class="block text-xs font-semibold text-gray-700 mb-1.5">Archive Name</label>
+            <input type="text" id="compressNameInput" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600">
+            <div class="flex justify-end gap-3 pt-5">
+                <button onclick="closeCompressModal()" class="px-4 py-2 border border-gray-200 text-gray-600 text-xs font-medium rounded-xl hover:bg-gray-50 cursor-pointer">Cancel</button>
+                <button id="compressSubmitBtn" onclick="submitCompress()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-md cursor-pointer">Create ZIP</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Storage Cleaner Modal -->
+    <div id="cleanerModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden items-center justify-center z-50 p-3 sm:p-4">
+        <div class="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl border border-gray-100 max-h-[92vh] flex flex-col">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><i data-lucide="sparkles" class="w-6 h-6"></i></div>
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900">Smart Storage Cleaner</h3>
+                        <p class="text-xs text-gray-400">Find duplicate files & space hogs, then free up space in one click</p>
+                    </div>
+                </div>
+                <button onclick="closeStorageCleanerModal()" aria-label="Close storage cleaner dialog" class="text-gray-400 hover:text-gray-600 cursor-pointer p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-xl mb-4 text-xs font-semibold w-fit">
+                <button id="cleanerTabDup" onclick="switchCleanerTab('dup')" class="px-4 py-1.5 rounded-lg bg-white shadow-xs text-emerald-700 cursor-pointer">Duplicates</button>
+                <button id="cleanerTabLarge" onclick="switchCleanerTab('large')" class="px-4 py-1.5 rounded-lg text-gray-500 cursor-pointer">Large Files</button>
+            </div>
+            <div id="cleanerSummary" class="text-xs text-gray-500 mb-3"></div>
+            <div id="cleanerBody" class="flex-1 overflow-y-auto space-y-3 pr-1 min-h-[200px]"></div>
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 mt-3 border-t border-gray-100">
+                <span id="cleanerSelectedText" class="text-xs text-gray-500">0 files selected</span>
+                <div class="flex gap-2">
+                    <button onclick="closeStorageCleanerModal()" class="px-4 py-2 border border-gray-200 text-gray-600 text-xs font-medium rounded-xl hover:bg-gray-50 cursor-pointer">Close</button>
+                    <button id="cleanerDeleteBtn" onclick="cleanSelectedFiles()" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"><i data-lucide="trash-2" class="w-4 h-4"></i> Delete Selected</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phone app shell (visible below 768px, see mobile.css) -->
+    <div id="sheetBackdrop" onclick="closeAllSheets()"></div>
+    <nav id="mobileBottomNav" aria-label="Main navigation">
+        <button class="mnav-btn active" data-mtab="drive" onclick="mobileNav('drive')"><i data-lucide="hard-drive"></i><span>Drive</span></button>
+        <button class="mnav-btn" data-mtab="starred" onclick="mobileNav('starred')"><i data-lucide="star"></i><span>Starred</span></button>
+        <div class="flex items-center justify-center"><button class="mnav-fab" onclick="openFabSheet()" aria-label="Create or upload"><i data-lucide="plus"></i></button></div>
+        <button class="mnav-btn" data-mtab="vault" onclick="mobileNav('vault')"><i data-lucide="shield-check"></i><span>Vault</span></button>
+        <button class="mnav-btn" data-mtab="menu" onclick="mobileNav('menu')"><i data-lucide="menu"></i><span>Menu</span></button>
+    </nav>
+    <div id="fabSheet" role="dialog" aria-label="Create or upload">
+        <div style="width:40px;height:4px;border-radius:4px;background:#cbd5e1;margin:0 auto 14px"></div>
+        <div class="fab-grid">
+            <button class="fab-item" onclick="closeAllSheets(); document.getElementById('file-input-hidden').click()"><span class="fab-ic bg-blue-50 text-blue-600"><i data-lucide="upload"></i></span>Upload</button>
+            <button class="fab-item" onclick="closeAllSheets(); document.getElementById('folder-input-hidden').click()"><span class="fab-ic bg-indigo-50 text-indigo-600"><i data-lucide="folder-up"></i></span>Folder upload</button>
+            <button class="fab-item" onclick="closeAllSheets(); createNewFolderPrompt()"><span class="fab-ic bg-amber-50 text-amber-600"><i data-lucide="folder-plus"></i></span>New folder</button>
+            <button class="fab-item" onclick="closeAllSheets(); openNewNoteModal()"><span class="fab-ic bg-emerald-50 text-emerald-600"><i data-lucide="file-plus"></i></span>New note</button>
+        </div>
+    </div>
+
+    <!-- Styled dialogs (bundled locally so they work offline on a LAN) -->
+    <script src="/vendor/sweetalert2.all.min.js"></script>
+    <script src="/dialogs.js"></script>
+    <script src="/app.js"></script>
+    <script src="/features.js"></script>
+    <script src="/mobile.js"></script>
+</body>
+</html>
