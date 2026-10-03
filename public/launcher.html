@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rx Cloude - Portable Drive & FTP Launcher</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(18, 24, 38, 0.7);
+      --border: rgba(255, 255, 255, 0.08);
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --success: #10b981;
+      --danger: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, var(--bg) 65%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 840px;
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      padding: 28px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-badge {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.5);
+    }
+
+    .title-area h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .title-area p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .status-badge.active {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .content {
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .input-group label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .input-field-wrap {
+      display: flex;
+      gap: 8px;
+    }
+
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #fff;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    input:focus {
+      border-color: #818cf8;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      color: white;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #4338ca, #4f46e5);
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc2626, #ef4444);
+      color: white;
+      box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);
+    }
+
+    .action-bar {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .action-bar .btn {
+      flex: 1;
+      padding: 14px;
+      font-size: 15px;
+    }
+
+    .network-panel {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 16px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .network-panel.show {
+      display: flex;
+    }
+
+    .network-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #94a3b8;
+      font-weight: 700;
+    }
+
+    .network-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .link-chip {
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #a5b4fc;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .link-chip:hover {
+      background: rgba(99, 102, 241, 0.25);
+    }
+
+    .console-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+
+    .console-wrap {
+      background: #040711;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      height: 200px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .log-line {
+      display: flex;
+      gap: 8px;
+      word-break: break-all;
+    }
+
+    .log-time { color: #64748b; }
+    .log-info { color: #93c5fd; }
+    .log-success { color: #86efac; }
+    .log-warning { color: #fde047; }
+    .log-error { color: #fca5a5; }
+    .log-upload { color: #c084fc; }
+    .log-download { color: #38bdf8; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <div class="header-left">
+        <div class="logo-badge">☁️</div>
+        <div class="title-area">
+          <h1>Rx Cloude Launcher</h1>
+          <p>Zero-install File Server with Google Drive Experience • Developed by <strong>ARG RABBI</strong></p>
+        </div>
+      </div>
+      <div id="statusBadge" class="status-badge">
+        <div class="status-dot"></div>
+        <span id="statusText">Server Stopped</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="form-grid">
+        <div class="input-group">
+          <label>Shared Folder Location <span>(FTP Directory)</span></label>
+          <div class="input-field-wrap">
+            <input type="text" id="folderInput" placeholder="Select or type directory path...">
+            <button id="browseBtn" class="btn btn-secondary">📁 Browse</button>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Port <span>(Default: 8080)</span></label>
+          <input type="number" id="portInput" value="8080" min="1024" max="65535">
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <button id="startBtn" class="btn btn-primary">▶ Start Server</button>
+        <button id="stopBtn" class="btn btn-danger" style="display:none;">■ Stop Server</button>
+        <button id="openBrowserBtn" class="btn btn-secondary" style="display:none;">🌐 Open in Browser</button>
+      </div>
+
+      <div id="networkPanel" class="network-panel">
+        <div class="network-title">Available Access URLs (LAN / WiFi & Localhost):</div>
+        <div id="networkLinks" class="network-links"></div>
+      </div>
+
+      <div class="console-header">
+        <span>⚡ Live Activity & Security Audit Logs</span>
+        <span style="font-weight:400; cursor:pointer;" onclick="clearLogs()">Clear</span>
+      </div>
+      <div id="consoleLog" class="console-wrap">
+        <div class="log-line"><span class="log-time">[System]</span> <span class="log-info">Ready to launch drive server...</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let ws = null;
+    let currentPort = 8080;
+
+    const folderInput = document.getElementById('folderInput');
+    const portInput = document.getElementById('portInput');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const openBrowserBtn = document.getElementById('openBrowserBtn');
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const networkPanel = document.getElementById('networkPanel');
+    const networkLinks = document.getElementById('networkLinks');
+    const consoleLog = document.getElementById('consoleLog');
+
+    function log(type, msg, time) {
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      const timestamp = time || new Date().toLocaleTimeString();
+      line.innerHTML = `<span class="log-time">[${timestamp}]</span> <span class="log-${type}">${msg}</span>`;
+      consoleLog.appendChild(line);
+      consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+
+    function clearLogs() {
+      consoleLog.innerHTML = '';
+    }
+
+    function updateState(running, port, folder, ips = []) {
+      currentPort = port || currentPort;
+      if (running) {
+        statusBadge.className = 'status-badge active';
+        statusText.innerText = 'Server Running';
+        startBtn.style.display = 'none';
+        stopBtn.style.display = 'inline-flex';
+        openBrowserBtn.style.display = 'inline-flex';
+        folderInput.disabled = true;
+        portInput.disabled = true;
+        document.getElementById('browseBtn').disabled = true;
+
+        networkPanel.className = 'network-panel show';
+        networkLinks.innerHTML = '';
+
+        const localUrl = `http://localhost:${currentPort}`;
+        addLinkChip(localUrl, 'Local');
+
+        ips.forEach(ip => {
+          const lanUrl = `http://${ip}:${currentPort}`;
+          addLinkChip(lanUrl, 'WiFi/LAN');
+        });
+      } else {
+        statusBadge.className = 'status-badge';
+        statusText.innerText = 'Server Stopped';
+        startBtn.style.display = 'inline-flex';
+        stopBtn.style.display = 'none';
+        openBrowserBtn.style.display = 'none';
+        folderInput.disabled = false;
+        portInput.disabled = false;
+        document.getElementById('browseBtn').disabled = false;
+        networkPanel.className = 'network-panel';
+      }
+    }
+
+    function addLinkChip(url, label) {
+      const a = document.createElement('a');
+      a.className = 'link-chip';
+      a.href = '#';
+      a.innerHTML = `<span>🔗 ${url}</span> <small style="color:#818cf8;">(${label})</small>`;
+      a.onclick = (e) => {
+        e.preventDefault();
+        fetch('/api/launcher/open-browser', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+      };
+      networkLinks.appendChild(a);
+    }
+
+    // Connect WebSocket to get live server logs
+    function connectLogsWebSocket(port) {
+      if (ws) ws.close();
+      const host = window.location.hostname || 'localhost';
+      ws = new WebSocket(`ws://${host}:${port}`);
+
+      ws.onmessage = (event) => {
+        const payload = JSON.parse(event.data);
+        if (payload.event === 'log') {
+          log(payload.data.type, payload.data.message, payload.data.timestamp);
+        } else if (payload.event === 'status') {
+          updateState(payload.data.isRunning, payload.data.port, payload.data.sharedFolder, payload.data.networkIPs);
+        }
+      };
+
+      ws.onclose = () => {
+        setTimeout(() => {
+          if (statusBadge.classList.contains('active')) {
+            connectLogsWebSocket(currentPort);
+          }
+        }, 2000);
+      };
+    }
+
+    // Init Config
+    fetch('/api/launcher/config')
+      .then(r => r.json())
+      .then(data => {
+        folderInput.value = data.config.sharedFolder || '';
+        portInput.value = data.config.port || 8080;
+        currentPort = data.config.port || 8080;
+        if (data.isRunning) {
+          updateState(true, currentPort, folderInput.value, data.networkIPs);
+          connectLogsWebSocket(currentPort);
+        }
+      });
+
+    // Pick Folder Dialog with fallback
+    const browseBtn = document.getElementById('browseBtn');
+    const nativeFolderPicker = document.createElement('input');
+    nativeFolderPicker.type = 'file';
+    nativeFolderPicker.webkitdirectory = true;
+    nativeFolderPicker.style.display = 'none';
+    document.body.appendChild(nativeFolderPicker);
+
+    nativeFolderPicker.onchange = (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        // In browser webkitRelativePath gives folder
+        const firstFile = e.target.files[0];
+        const folderName = firstFile.webkitRelativePath.split('/')[0];
+        if (folderName) {
+          folderInput.value = folderName;
+          log('info', `Folder chosen: ${folderName}`);
+        }
+      }
+    };
+
+    browseBtn.onclick = () => {
+      browseBtn.innerText = '⏳ Opening...';
+      fetch('/api/launcher/pick-folder', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+          browseBtn.innerText = '📁 Browse';
+          if (data && data.folder) {
+            folderInput.value = data.folder;
+            log('info', `Folder selected: ${data.folder}`);
+          } else {
+            // Fallback to browser picker
+            nativeFolderPicker.click();
+          }
+        })
+        .catch(() => {
+          browseBtn.innerText = '📁 Browse';
+          nativeFolderPicker.click();
+        });
+    };
+
+    // Start Server
+    startBtn.onclick = () => {
+      const port = Number(portInput.value);
+      const folder = folderInput.value;
+
+      startBtn.disabled = true;
+      startBtn.innerText = 'Starting...';
+
+      fetch('/api/launcher/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ port, folder })
+      })
+      .then(r => r.json())
+      .then(data => {
+        startBtn.disabled = false;
+        startBtn.innerText = '▶ Start Server';
+        if (data.error) {
+          alert('Error starting server: ' + data.error);
+          log('error', data.error);
+        } else {
+          updateState(true, data.info.port, data.info.sharedFolder, data.info.ips);
+          connectLogsWebSocket(data.info.port);
+        }
+      })
+      .catch(err => {
+        startBtn.disabled = false;
+        startBtn.innerText = '▶ Start Server';
+        alert('Server start failed: ' + err.message);
+      });
+    };
+
+    // Stop Server
+    stopBtn.onclick = () => {
+      fetch('/api/launcher/stop', { method: 'POST' })
+        .then(r => r.json())
+        .then(() => {
+          updateState(false);
+          log('warning', 'Server stopped by user.');
+        });
+    };
+
+    // Open Browser
+    openBrowserBtn.onclick = () => {
+      const url = `http://localhost:${currentPort}`;
+      fetch('/api/launcher/open-browser', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+    };
+  </script>
+</body>
+</html>
