@@ -6,6 +6,7 @@ Only the latest release receives security fixes.
 
 | Version | Supported |
 |---|---|
+| 1.3.x | Yes |
 | 1.2.x | Yes |
 | < 1.2 | No. Please upgrade: 1.2.0 fixes path traversal in Trash and stored XSS in previews |
 

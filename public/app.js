@@ -1668,7 +1668,46 @@ async function fetchServerVersion() {
         globalServerConfig.version = data.version || '—';
         globalServerConfig.node = data.node || '';
         applyVersionUi(data.version, data.node);
+        showUpdateBanner(data);
     } catch (e) {}
+}
+
+// Admin-only notice when GitHub has a newer release. Dismissal is remembered
+// per version, so the next release shows it again.
+function isNewerVersion(latest, current) {
+    const a = String(latest || '').replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
+    const b = String(current || '').replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
+    for (let i = 0; i < 3; i++) if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0);
+    return false;
+}
+
+function showUpdateBanner(info) {
+    const old = document.getElementById('updateBanner');
+    if (old) old.remove();
+    if (!info || !currentUser || currentUser.role !== 'admin') return;
+    if (!isNewerVersion(info.latest, info.version)) return;
+    let dismissed = null;
+    try { dismissed = localStorage.getItem('rx_update_dismissed'); } catch (e) {}
+    if (dismissed === info.latest) return;
+
+    const bar = document.createElement('div');
+    bar.id = 'updateBanner';
+    bar.className = 'mb-4 p-3 sm:p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl flex items-center gap-3 text-xs sm:text-sm';
+    bar.innerHTML = `
+        <i data-lucide="sparkles" class="w-5 h-5 text-amber-500 shrink-0"></i>
+        <div class="flex-1 min-w-0">
+            <b>Rx Cloude v${escHtml(info.latest)} is available.</b>
+            <span class="block sm:inline text-amber-800/80">On the server, click <b>Update</b> in the Rx Cloude launcher to install it.</span>
+        </div>
+        ${info.releaseUrl ? `<a href="${escHtml(info.releaseUrl)}" target="_blank" rel="noopener" class="shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl text-xs">What's new</a>` : ''}
+        <button class="shrink-0 p-1 text-amber-700/70 hover:text-amber-900 cursor-pointer" aria-label="Dismiss update notice"><i data-lucide="x" class="w-4 h-4"></i></button>`;
+    bar.querySelector('button').onclick = () => {
+        try { localStorage.setItem('rx_update_dismissed', info.latest); } catch (e) {}
+        bar.remove();
+    };
+    const host = document.getElementById('main-content');
+    if (host) host.insertBefore(bar, host.firstChild);
+    if (window.lucide) lucide.createIcons();
 }
 
 // Keeps every version stamp on the page in sync (login screen, sidebar,

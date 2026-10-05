@@ -13,7 +13,7 @@ namespace RxCloude
     public class MainForm : Form
     {
         // Keep in sync with package.json "version" and the web UI.
-        public const string AppVersion = "1.2.0";
+        public const string AppVersion = "1.3.0";
 
         private TextBox txtFolder;
         private TextBox txtPort;
@@ -59,16 +59,244 @@ namespace RxCloude
         private static bool launchedByAutoStart = false;
         private const string AutoStartFlag = "--autostart";
 
+        // --- Self-update ---------------------------------------------------
+        // Releases are published on GitHub by .github/workflows/release.yml.
+        private const string UpdateRepo = "itrabbi24/rx_cloud_ftp";
+        private const string AfterUpdateFlag = "--after-update";
+        private const string StartServerFlag = "--start-server";
+        private static bool launchedAfterUpdate = false;
+        private static bool startServerOnLaunch = false;
+        private string latestVersion = null;
+        private string latestDownloadUrl = null;
+        private string latestReleasePage = null;
+        private bool updateInProgress = false;
+        private Button btnUpdate;
+        private Timer updateTimer;
+
+        // Leftovers from a previous self-update (the replaced exe and any
+        // half-finished download) are removed on the next start.
+        private static void CleanupOldUpdateFiles()
+        {
+            string exe = Application.ExecutablePath;
+            try { if (File.Exists(exe + ".old")) File.Delete(exe + ".old"); } catch { }
+            try { if (File.Exists(exe + ".download")) File.Delete(exe + ".download"); } catch { }
+        }
+
+        private static Version ParseVersion(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return null;
+            string v = value.Trim().TrimStart('v', 'V');
+            int dash = v.IndexOfAny(new char[] { '-', '+' });
+            if (dash > 0) v = v.Substring(0, dash);
+            Version parsed;
+            return Version.TryParse(v, out parsed) ? parsed : null;
+        }
+
+        private static string JsonString(string json, string key)
+        {
+            System.Text.RegularExpressions.Match m = System.Text.RegularExpressions.Regex.Match(json,
+                "\"" + key + "\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
+            return m.Success ? m.Groups[1].Value.Replace("\\/", "/") : null;
+        }
+
+        // Asks GitHub for the latest release. Runs on a worker thread; results
+        // are applied on the UI thread. silent = no message when up to date.
+        private void CheckForUpdates(bool silent)
+        {
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate {
+                string error = null;
+                string tag = null, page = null, download = null;
+                try
+                {
+                    // .NET Framework 4.x defaults to TLS 1.0, which GitHub refuses.
+                    System.Net.ServicePointManager.SecurityProtocol |= (System.Net.SecurityProtocolType)3072;
+                    using (System.Net.WebClient wc = new System.Net.WebClient())
+                    {
+                        wc.Headers[System.Net.HttpRequestHeader.UserAgent] = "RxCloude-Launcher/" + AppVersion;
+                        wc.Headers[System.Net.HttpRequestHeader.Accept] = "application/vnd.github+json";
+                        wc.Encoding = System.Text.Encoding.UTF8;
+                        string json = wc.DownloadString("https://api.github.com/repos/" + UpdateRepo + "/releases/latest");
+                        tag = JsonString(json, "tag_name");
+                        page = JsonString(json, "html_url");
+                        System.Text.RegularExpressions.Match asset = System.Text.RegularExpressions.Regex.Match(json,
+                            "\"browser_download_url\"\\s*:\\s*\"([^\"]*/RxCloude\\.exe)\"");
+                        if (asset.Success) download = asset.Groups[1].Value;
+                    }
+                }
+                catch (Exception ex) { error = ex.Message; }
+
+                if (this.IsDisposed) return;
+                try
+                {
+                    this.BeginInvoke(new Action(delegate {
+                        if (error != null)
+                        {
+                            // Offline LAN servers are normal; stay quiet unless asked.
+                            if (!silent) AddLog("Update check failed (no internet access?): " + error);
+                            return;
+                        }
+                        Version latest = ParseVersion(tag);
+                        Version current = ParseVersion(AppVersion);
+                        if (latest == null || current == null || latest <= current)
+                        {
+                            if (!silent) AddLog("Rx Cloude is up to date (v" + AppVersion + ").");
+                            return;
+                        }
+                        bool firstNotice = latestVersion != latest.ToString();
+                        latestVersion = latest.ToString();
+                        latestDownloadUrl = download;
+                        latestReleasePage = page;
+                        btnUpdate.Text = "Update to v" + latestVersion;
+                        btnUpdate.Visible = true;
+                        if (firstNotice)
+                        {
+                            AddLog(string.Format("Update available: v{0} (you have v{1}). Click \"Update to v{0}\" to install it.", latestVersion, AppVersion));
+                            trayIcon.ShowBalloonTip(5000, "Rx Cloude update available",
+                                "Version " + latestVersion + " is ready. Open Rx Cloude and click Update.", ToolTipIcon.Info);
+                        }
+                    }));
+                }
+                catch { }
+            });
+        }
+
+        private void BtnUpdate_Click(object sender, EventArgs e)
+        {
+            if (updateInProgress || string.IsNullOrEmpty(latestVersion)) return;
+            if (string.IsNullOrEmpty(latestDownloadUrl))
+            {
+                // Release without an exe attached: send the user to the page.
+                if (!string.IsNullOrEmpty(latestReleasePage)) Process.Start(new ProcessStartInfo(latestReleasePage) { UseShellExecute = true });
+                return;
+            }
+            bool running = serverProcess != null && !serverProcess.HasExited;
+            DialogResult answer = MessageBox.Show(this,
+                "Install Rx Cloude v" + latestVersion + " now?\r\n\r\n" +
+                (running ? "The server will stop for a few seconds and start again automatically.\r\n" : "") +
+                "Your files, users and settings are kept.",
+                "Rx Cloude update", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (answer != DialogResult.Yes) return;
+            StartSelfUpdate(running);
+        }
+
+        private void StartSelfUpdate(bool restartServer)
+        {
+            string exe = Application.ExecutablePath;
+            string download = exe + ".download";
+            string backup = exe + ".old";
+
+            // The exe folder must be writable (not e.g. C:\Program Files).
+            try
+            {
+                using (FileStream probe = File.Create(download)) { }
+            }
+            catch (Exception ex)
+            {
+                AddLog("Cannot update here: the folder is not writable (" + ex.Message + ").");
+                if (!string.IsNullOrEmpty(latestReleasePage)) Process.Start(new ProcessStartInfo(latestReleasePage) { UseShellExecute = true });
+                return;
+            }
+
+            updateInProgress = true;
+            btnUpdate.Enabled = false;
+            btnUpdate.Text = "Downloading...";
+            AddLog("Downloading Rx Cloude v" + latestVersion + "...");
+
+            System.Net.ServicePointManager.SecurityProtocol |= (System.Net.SecurityProtocolType)3072;
+            System.Net.WebClient wc = new System.Net.WebClient();
+            wc.Headers[System.Net.HttpRequestHeader.UserAgent] = "RxCloude-Launcher/" + AppVersion;
+            wc.DownloadProgressChanged += delegate(object s, System.Net.DownloadProgressChangedEventArgs e) {
+                btnUpdate.Text = "Downloading " + e.ProgressPercentage + "%";
+            };
+            wc.DownloadFileCompleted += delegate(object s, System.ComponentModel.AsyncCompletedEventArgs e) {
+                wc.Dispose();
+                string problem = null;
+                if (e.Error != null) problem = e.Error.Message;
+                else if (e.Cancelled) problem = "download cancelled";
+                else
+                {
+                    // Must look like a real Windows executable before we swap.
+                    try
+                    {
+                        FileInfo fi = new FileInfo(download);
+                        byte[] head = new byte[2];
+                        using (FileStream fs = File.OpenRead(download)) fs.Read(head, 0, 2);
+                        if (fi.Length < 5 * 1024 * 1024 || head[0] != (byte)'M' || head[1] != (byte)'Z') problem = "downloaded file is not a valid program";
+                    }
+                    catch (Exception ex) { problem = ex.Message; }
+                }
+
+                if (problem != null)
+                {
+                    try { File.Delete(download); } catch { }
+                    AddLog("Update failed: " + problem);
+                    updateInProgress = false;
+                    btnUpdate.Enabled = true;
+                    btnUpdate.Text = "Update to v" + latestVersion;
+                    return;
+                }
+
+                AddLog("Installing update...");
+                StopServer();
+                try
+                {
+                    // Windows allows renaming a running exe, so swap in place.
+                    if (File.Exists(backup)) File.Delete(backup);
+                    File.Move(exe, backup);
+                    File.Move(download, exe);
+                }
+                catch (Exception ex)
+                {
+                    try { if (!File.Exists(exe) && File.Exists(backup)) File.Move(backup, exe); } catch { }
+                    AddLog("Update failed while replacing the program: " + ex.Message);
+                    updateInProgress = false;
+                    btnUpdate.Enabled = true;
+                    btnUpdate.Text = "Update to v" + latestVersion;
+                    return;
+                }
+
+                try
+                {
+                    ProcessStartInfo psi = new ProcessStartInfo(exe, AfterUpdateFlag + (restartServer ? " " + StartServerFlag : ""));
+                    psi.UseShellExecute = false;
+                    psi.WorkingDirectory = Path.GetDirectoryName(exe);
+                    Process.Start(psi);
+                }
+                catch (Exception ex)
+                {
+                    AddLog("Update installed, but the new version could not be started: " + ex.Message + ". Please start RxCloude.exe again.");
+                    return;
+                }
+                trayIcon.Visible = false;
+                Application.Exit();
+            };
+            wc.DownloadFileAsync(new Uri(latestDownloadUrl), download);
+        }
+
         [STAThread]
         public static void Main(string[] args)
         {
             // Windows auto-start passes this flag: open the GUI in the tray and
             // start the server. It used to open the window and do nothing.
-            if (args != null && args.Length == 1 && string.Equals(args[0], AutoStartFlag, StringComparison.OrdinalIgnoreCase))
+            // if (args != null && args.Length == 1 && string.Equals(args[0], AutoStartFlag, StringComparison.OrdinalIgnoreCase))
+            // {
+            //     launchedByAutoStart = true;
+            //     args = new string[0];
+            // }
+            // Launcher-only flags are consumed here; anything else means CLI mode.
+            if (args != null && args.Length > 0)
             {
-                launchedByAutoStart = true;
-                args = new string[0];
+                System.Collections.Generic.List<string> rest = new System.Collections.Generic.List<string>();
+                foreach (string a in args)
+                {
+                    if (string.Equals(a, AutoStartFlag, StringComparison.OrdinalIgnoreCase)) launchedByAutoStart = true;
+                    else if (string.Equals(a, AfterUpdateFlag, StringComparison.OrdinalIgnoreCase)) launchedAfterUpdate = true;
+                    else if (string.Equals(a, StartServerFlag, StringComparison.OrdinalIgnoreCase)) startServerOnLaunch = true;
+                    else rest.Add(a);
+                }
+                args = rest.ToArray();
             }
+            CleanupOldUpdateFiles();
 
             // If command line arguments provided for CLI mode, run headless
             if (args != null && args.Length > 0)
@@ -114,6 +342,13 @@ namespace RxCloude
             string mutexName = "RxCloudeLauncher_" + AppDomain.CurrentDomain.BaseDirectory.ToLowerInvariant().GetHashCode().ToString("X");
             using (System.Threading.Mutex mutex = new System.Threading.Mutex(true, mutexName, out firstInstance))
             {
+                // After a self-update the old launcher is still closing; wait for
+                // it to release the mutex instead of reporting "already running".
+                if (!firstInstance && launchedAfterUpdate)
+                {
+                    try { firstInstance = mutex.WaitOne(15000); }
+                    catch (System.Threading.AbandonedMutexException) { firstInstance = true; }
+                }
                 if (!firstInstance)
                 {
                     if (!launchedByAutoStart)
@@ -219,6 +454,10 @@ namespace RxCloude
             trayMenu.MenuItems.Add("Start / Stop Server", delegate(object s, EventArgs e) {
                 BtnStart_Click(null, null);
             });
+            trayMenu.MenuItems.Add("Check for updates", delegate(object s, EventArgs e) {
+                AddLog("Checking for updates...");
+                CheckForUpdates(false);
+            });
             trayMenu.MenuItems.Add("-");
             trayMenu.MenuItems.Add("Exit", delegate(object s, EventArgs e) {
                 trayIcon.Visible = false;
@@ -257,6 +496,21 @@ namespace RxCloude
             lblStatus.BackColor = Color.FromArgb(254, 226, 226);
             lblStatus.ForeColor = Color.FromArgb(220, 38, 38);
             this.Controls.Add(lblStatus);
+
+            // Shown only when GitHub has a newer release.
+            btnUpdate = new Button();
+            btnUpdate.Location = new Point(352, 22);
+            btnUpdate.Size = new Size(140, 28);
+            btnUpdate.Text = "Update";
+            btnUpdate.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            btnUpdate.BackColor = Color.FromArgb(245, 158, 11);
+            btnUpdate.ForeColor = Color.White;
+            btnUpdate.FlatStyle = FlatStyle.Flat;
+            btnUpdate.FlatAppearance.BorderSize = 0;
+            btnUpdate.Cursor = Cursors.Hand;
+            btnUpdate.Visible = false;
+            btnUpdate.Click += BtnUpdate_Click;
+            this.Controls.Add(btnUpdate);
 
             // Folder Label & Input
             Label lblFolder = new Label();
@@ -438,6 +692,22 @@ namespace RxCloude
             this.Controls.Add(lnkFirewall);
 
             LoadSavedSettings();
+
+            // Update check: shortly after start, then once a day.
+            this.Shown += delegate(object s3, EventArgs e3) { CheckForUpdates(true); };
+            updateTimer = new Timer();
+            updateTimer.Interval = 24 * 60 * 60 * 1000;
+            updateTimer.Tick += delegate(object s4, EventArgs e4) { CheckForUpdates(true); };
+            updateTimer.Start();
+
+            if (launchedAfterUpdate)
+            {
+                AddLog("Rx Cloude was updated to v" + AppVersion + ".");
+                if (startServerOnLaunch)
+                {
+                    this.Shown += delegate(object s5, EventArgs e5) { StartServer(); };
+                }
+            }
             // Do not open with the whole folder path selected.
             this.Shown += delegate(object s2, EventArgs e2) { this.ActiveControl = btnStart; txtFolder.SelectionLength = 0; };
 

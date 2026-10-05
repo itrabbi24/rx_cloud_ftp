@@ -19,7 +19,7 @@ const { isAdmin, hasPermission, publicUser } = require('./permissions');
 
 // Single source of truth for the build version. package.json is bundled into
 // the pkg snapshot because it is listed in the pkg.scripts/assets config.
-let APP_VERSION = '1.2.0';
+let APP_VERSION = '1.3.0';
 try {
   const pkgJson = require('../package.json');
   if (pkgJson && pkgJson.version) APP_VERSION = pkgJson.version;
@@ -35,6 +35,48 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (err) => {
   console.error(`[Error] Unhandled: ${err && err.message ? err.message : err}`);
 });
+
+// --- Update check ---------------------------------------------------------
+// Looks up the newest GitHub release once at start and then daily. Failure
+// (an offline LAN server) is silent; the feature simply stays hidden.
+const UPDATE_REPO = 'itrabbi24/rx_cloud_ftp';
+let latestRelease = null;
+
+function compareVersions(a, b) {
+  const pa = String(a || '').replace(/^v/i, '').split(/[.+-]/).map(n => parseInt(n, 10) || 0);
+  const pb = String(b || '').replace(/^v/i, '').split(/[.+-]/).map(n => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
+  }
+  return 0;
+}
+
+function checkLatestRelease() {
+  const req = https.get({
+    host: 'api.github.com',
+    path: `/repos/${UPDATE_REPO}/releases/latest`,
+    headers: { 'User-Agent': `RxCloude/${APP_VERSION}`, Accept: 'application/vnd.github+json' },
+    timeout: 10000
+  }, (res) => {
+    let body = '';
+    res.setEncoding('utf8');
+    res.on('data', chunk => { if (body.length < 512 * 1024) body += chunk; });
+    res.on('end', () => {
+      try {
+        if (res.statusCode !== 200) return;
+        const data = JSON.parse(body);
+        const version = String(data.tag_name || '').replace(/^v/i, '');
+        if (!version) return;
+        latestRelease = { version, url: data.html_url || `https://github.com/${UPDATE_REPO}/releases/latest` };
+        if (compareVersions(version, APP_VERSION) > 0) {
+          broadcastLog('info', `Update available: Rx Cloude v${version} (running v${APP_VERSION}). Use the Update button in the launcher.`);
+        }
+      } catch (e) {}
+    });
+  });
+  req.on('timeout', () => req.destroy());
+  req.on('error', () => {});
+}
 
 let app = express();
 let server = null;
@@ -499,7 +541,16 @@ function createServerApp() {
 
   // Build/version information so clients can detect what they are talking to.
   currentApp.get('/api/version', (req, res) => {
-    res.json({ name: 'Rx Cloude', version: APP_VERSION, node: process.version });
+    // res.json({ name: 'Rx Cloude', version: APP_VERSION, node: process.version });
+    res.json({
+      name: 'Rx Cloude',
+      version: APP_VERSION,
+      node: process.version,
+      // Newest GitHub release (null when unknown or offline); the web UI
+      // shows an update banner to admins when it is newer than `version`.
+      latest: latestRelease ? latestRelease.version : null,
+      releaseUrl: latestRelease ? latestRelease.url : null
+    });
   });
 
   currentApp.put('/api/config', authenticateToken, (req, res) => {
@@ -2378,6 +2429,10 @@ async function startServer(port, folder, callback) {
     if (!callbackSent && callback) {
       callbackSent = true;
       callback(null, { port: cfg.port, sharedFolder: cfg.sharedFolder, ips, version: APP_VERSION, certExpiresAt: certExpiry });
+    }
+    if (process.env.RX_CLOUDE_NO_UPDATE_CHECK !== '1') {
+      setTimeout(checkLatestRelease, 5000);
+      setInterval(checkLatestRelease, 24 * 60 * 60 * 1000).unref();
     }
   };
 

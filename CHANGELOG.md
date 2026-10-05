@@ -5,6 +5,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-05
+
+### Added
+- Update notifications: the launcher checks GitHub Releases at start and daily, then shows a tray message and an **Update** button. The web UI shows admins a banner.
+- One-click self-update: downloads the new `RxCloude.exe`, swaps it in place, restarts, and starts the server again if it was running. Data and settings are kept.
+- "Check for updates" in the tray menu. Set `RX_CLOUDE_NO_UPDATE_CHECK=1` to turn off the server-side check.
+
 ## [1.2.0] - 2026-10-05
 
 ### Added
@@ -51,6 +58,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/itrabbi24/rx_cloud_ftp/releases/tag/v1.1.1
