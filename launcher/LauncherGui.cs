@@ -13,7 +13,7 @@ namespace RxCloude
     public class MainForm : Form
     {
         // Keep in sync with package.json "version" and the web UI.
-        public const string AppVersion = "1.3.0";
+        public const string AppVersion = "1.3.1";
 
         private TextBox txtFolder;
         private TextBox txtPort;
@@ -148,6 +148,7 @@ namespace RxCloude
                         latestReleasePage = page;
                         btnUpdate.Text = "Update to v" + latestVersion;
                         btnUpdate.Visible = true;
+                        btnUpdate.BringToFront();
                         if (firstNotice)
                         {
                             AddLog(string.Format("Update available: v{0} (you have v{1}). Click \"Update to v{0}\" to install it.", latestVersion, AppVersion));
@@ -499,8 +500,11 @@ namespace RxCloude
 
             // Shown only when GitHub has a newer release.
             btnUpdate = new Button();
-            btnUpdate.Location = new Point(352, 22);
-            btnUpdate.Size = new Size(140, 28);
+            // btnUpdate.Location = new Point(352, 22);
+            // btnUpdate.Size = new Size(140, 28);
+            // The title label (x 66-446) covered that spot; sit under the status badge instead.
+            btnUpdate.Location = new Point(500, 54);
+            btnUpdate.Size = new Size(120, 24);
             btnUpdate.Text = "Update";
             btnUpdate.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
             btnUpdate.BackColor = Color.FromArgb(245, 158, 11);

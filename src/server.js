@@ -19,7 +19,7 @@ const { isAdmin, hasPermission, publicUser } = require('./permissions');
 
 // Single source of truth for the build version. package.json is bundled into
 // the pkg snapshot because it is listed in the pkg.scripts/assets config.
-let APP_VERSION = '1.3.0';
+let APP_VERSION = '1.3.1';
 try {
   const pkgJson = require('../package.json');
   if (pkgJson && pkgJson.version) APP_VERSION = pkgJson.version;

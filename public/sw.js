@@ -1,6 +1,6 @@
 // Rx Cloude Service Worker
 // Bump this tag on every release so clients drop stale cached assets.
-// Current application version: 1.3.0
+// Current application version: 1.3.1
 // const CACHE_NAME = 'rx-cloude-v6';
 // const CACHE_NAME = 'rx-cloude-v7';
 // const CACHE_NAME = 'rx-cloude-v8';
