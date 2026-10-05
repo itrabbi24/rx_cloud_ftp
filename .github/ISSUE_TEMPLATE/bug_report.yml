@@ -1,0 +1,47 @@
+name: Bug report
+description: Something isn't working as expected
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Rx Cloude version
+      description: Shown in the launcher title bar and the web sidebar.
+      placeholder: "1.2.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: started
+    attributes:
+      label: How was it started?
+      options:
+        - RxCloude.exe (launcher window)
+        - RxCloude.exe with command-line options
+        - RxCloudeServer.exe (console)
+        - From source (npm run dev)
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Windows version and browser / device
+      placeholder: "Windows Server 2022; Chrome 130 on Android"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start on port 8090
+        2. Upload a folder...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Launcher / console log
+      description: Copy the log lines around the error. Remove any passwords.
+      render: text
