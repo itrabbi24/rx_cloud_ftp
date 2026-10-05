@@ -7,7 +7,7 @@
 **A portable, zero-install cloud drive for Windows.**
 Copy one `.exe` to any PC or server, pick a port and a folder, and everyone on your network gets a private web drive. It works on desktop and phone, and phones can install it as an app.
 
-[![CI](https://github.com/itrabbi24/rx-cloude/actions/workflows/ci.yml/badge.svg)](https://github.com/itrabbi24/rx-cloude/actions/workflows/ci.yml)
+[![CI](https://github.com/itrabbi24/rx_cloud_ftp/actions/workflows/ci.yml/badge.svg)](https://github.com/itrabbi24/rx_cloud_ftp/actions/workflows/ci.yml)
 ![Platform](https://img.shields.io/badge/platform-Windows-0078D6)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-339933)
 ![License](https://img.shields.io/badge/license-ISC-blue)
@@ -40,7 +40,7 @@ Copy one `.exe` to any PC or server, pick a port and a folder, and everyone on y
 
 ## Quick start (users)
 
-1. Download `RxCloude.exe` from the [latest release](https://github.com/itrabbi24/rx-cloude/releases/latest).
+1. Download `RxCloude.exe` from the [latest release](https://github.com/itrabbi24/rx_cloud_ftp/releases/latest).
 2. Put it in any folder, for example `D:\RxCloude\`, and run it.
 3. Choose a **port** (such as `8090`) and a **shared folder**, then click **Start Server**.
 4. On first run a dialog shows the admin login. It is also saved in `data\FIRST-LOGIN.txt`. Sign in at `http://localhost:8090` and choose your own password.
@@ -76,8 +76,8 @@ Everything is stored in `data\` next to the exe: `config.json`, `users.json`, `s
 **Requirements:** Windows 10/11, Node.js 18 or newer, and the .NET Framework 4.x (included with Windows) for the launcher.
 
 ```bash
-git clone https://github.com/itrabbi24/rx-cloude.git
-cd rx-cloude
+git clone https://github.com/itrabbi24/rx_cloud_ftp.git
+cd rx_cloud_ftp
 npm install
 npm run dev          # server from source on http://localhost:8090
 npm run check        # syntax + sanity checks (same as CI)

@@ -60,11 +60,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/itrabbi24/rx-cloude.git"
+    "url": "https://github.com/itrabbi24/rx_cloud_ftp.git"
   },
   "bugs": {
-    "url": "https://github.com/itrabbi24/rx-cloude/issues"
+    "url": "https://github.com/itrabbi24/rx_cloud_ftp/issues"
   },
-  "homepage": "https://github.com/itrabbi24/rx-cloude#readme",
+  "homepage": "https://github.com/itrabbi24/rx_cloud_ftp#readme",
   "private": true
 }

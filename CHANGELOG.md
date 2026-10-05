@@ -51,6 +51,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx-cloude/compare/v1.2.0...HEAD
-[1.2.0]: https://github.com/itrabbi24/rx-cloude/compare/v1.1.1...v1.2.0
-[1.1.1]: https://github.com/itrabbi24/rx-cloude/releases/tag/v1.1.1
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.1.1...v1.2.0
+[1.1.1]: https://github.com/itrabbi24/rx_cloud_ftp/releases/tag/v1.1.1
