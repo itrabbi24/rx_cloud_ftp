@@ -67,6 +67,8 @@ function publicUser(user) {
     permissions: user.permissions,
     folderPermissions: user.folderPermissions,
     mustChangePassword: Boolean(user.mustChangePassword),
+    // Changes whenever the profile picture changes (cache-busting); 0 = none.
+    avatarVersion: Number(user.avatarVersion) || 0,
     createdAt: user.createdAt
   };
 }

@@ -19,7 +19,7 @@ const { isAdmin, hasPermission, publicUser } = require('./permissions');
 
 // Single source of truth for the build version. package.json is bundled into
 // the pkg snapshot because it is listed in the pkg.scripts/assets config.
-let APP_VERSION = '1.3.2';
+let APP_VERSION = '1.3.3';
 try {
   const pkgJson = require('../package.json');
   if (pkgJson && pkgJson.version) APP_VERSION = pkgJson.version;
@@ -527,6 +527,88 @@ function createServerApp() {
     res.json({ success: true, message: 'Password updated successfully' });
   });
 
+  // --- API: PROFILE PICTURE ---
+  // Stored as data/avatars/<userId>.<ext>. The browser crops and resizes to a
+  // small square before upload; the server still caps the size and checks the
+  // file really is an image (by its first bytes, not the name).
+  const AVATAR_DIR = path.join(require('./db').DATA_DIR, 'avatars');
+  const AVATAR_TYPES = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif' };
+  const avatarUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024, files: 1 } });
+
+  function sniffImageType(buf) {
+    if (!buf || buf.length < 12) return null;
+    if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpg';
+    if (buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
+    if (buf.subarray(0, 4).toString('latin1') === 'RIFF' && buf.subarray(8, 12).toString('latin1') === 'WEBP') return 'webp';
+    if (buf.subarray(0, 4).toString('latin1') === 'GIF8') return 'gif';
+    return null;
+  }
+
+  function avatarFileFor(userId) {
+    const safeId = String(userId).replace(/[^A-Za-z0-9_-]/g, '');
+    for (const ext of Object.keys(AVATAR_TYPES)) {
+      const file = path.join(AVATAR_DIR, `${safeId}.${ext}`);
+      if (fs.existsSync(file)) return { file, ext };
+    }
+    return null;
+  }
+
+  function removeAvatarFiles(userId) {
+    const safeId = String(userId).replace(/[^A-Za-z0-9_-]/g, '');
+    for (const ext of Object.keys(AVATAR_TYPES)) {
+      try { fs.rmSync(path.join(AVATAR_DIR, `${safeId}.${ext}`), { force: true }); } catch (e) {}
+    }
+  }
+
+  function setAvatarVersion(userId, version) {
+    const users = getUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index === -1) return null;
+    users[index].avatarVersion = version;
+    saveUsers(users);
+    return users[index];
+  }
+
+  currentApp.post('/api/auth/avatar', authenticateToken, (req, res) => {
+    avatarUpload.single('avatar')(req, res, (err) => {
+      if (err) {
+        return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({
+          error: err.code === 'LIMIT_FILE_SIZE' ? 'Picture is too large (max 2 MB)' : err.message
+        });
+      }
+      const ext = sniffImageType(req.file && req.file.buffer);
+      if (!ext) return res.status(400).json({ error: 'Please choose a JPG, PNG, WebP or GIF image' });
+      fs.mkdirSync(AVATAR_DIR, { recursive: true });
+      removeAvatarFiles(req.user.id);
+      const safeId = String(req.user.id).replace(/[^A-Za-z0-9_-]/g, '');
+      fs.writeFileSync(path.join(AVATAR_DIR, `${safeId}.${ext}`), req.file.buffer);
+      const user = setAvatarVersion(req.user.id, Date.now());
+      broadcastLog('info', `User "${req.user.username}" changed their profile picture`);
+      res.json({ success: true, user: publicUser(user) });
+    });
+  });
+
+  currentApp.delete('/api/auth/avatar', authenticateToken, (req, res) => {
+    removeAvatarFiles(req.user.id);
+    const user = setAvatarVersion(req.user.id, 0);
+    res.json({ success: true, user: publicUser(user) });
+  });
+
+  // Any signed-in user may see profile pictures (shown in the users list).
+  currentApp.get('/api/avatar/:userId', authenticateToken, (req, res) => {
+    const found = avatarFileFor(req.params.userId);
+    if (!found) return res.status(404).json({ error: 'No profile picture' });
+    res.setHeader('Content-Type', AVATAR_TYPES[found.ext]);
+    res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.sendFile(found.file, { dotfiles: 'allow' });
+  });
+
+  // Current user's own record (fresh avatarVersion, role, etc.).
+  currentApp.get('/api/auth/me', authenticateToken, (req, res) => {
+    res.json({ user: publicUser(req.user) });
+  });
+
   // --- API: SERVER CONFIG & GLOBAL SETTINGS ---
   // Public endpoint: the login page calls this before authentication, so it
   // must never expose the storage path, port or any credential material.
@@ -764,6 +846,7 @@ function createServerApp() {
     }
 
     users = users.filter(u => u.id !== id);
+    removeAvatarFiles(id);
     saveUsers(users);
     broadcastLog('warning', `Admin deleted user: "${target.username}"`);
     res.json({ success: true });

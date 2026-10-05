@@ -5,6 +5,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-10-05
+
+### Added
+- Relative dates ("2 hours ago") that keep updating, with a **Date format** setting in the sidebar: relative, `05 Oct 2026`, `05 Oct 2026, 3:45 PM` or `05/10/2026`. Hovering a date shows the full date and time.
+- Profile pictures: a **My Profile** window (header avatar or sidebar) to upload, change or remove a photo. Photos are cropped to a square and resized in the browser and shown in the header and the users list.
+
+### Fixed
+- Folder card dates were cut off next to the star and menu buttons.
+
 ## [1.3.2] - 2026-10-05
 
 ### Fixed
@@ -73,7 +82,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.2...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.3...HEAD
+[1.3.3]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.2.0...v1.3.0

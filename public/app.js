@@ -489,7 +489,7 @@ function renderFolders() {
                     </div>
                     <div class="truncate">
                         <h3 class="font-semibold text-sm text-gray-900 group-hover:text-blue-600 transition-colors truncate" title="${escHtml(folder.name)}">${escHtml(folder.name)}</h3>
-                        <p class="text-xs text-gray-400">${new Date(folder.updatedAt).toLocaleDateString()}</p>
+                        <p class="text-xs text-gray-400">${rxDate(folder.updatedAt)}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-1 shrink-0 relative" onclick="event.stopPropagation()">
@@ -731,7 +731,7 @@ function renderFiles() {
                 ${starred ? `<i data-lucide="star" class="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0"></i>` : ''}
             </td>
             <td class="py-3.5 px-6 text-xs text-gray-500 col-owner">You</td>
-            <td class="py-3.5 px-6 text-xs text-gray-500">${new Date(file.updatedAt).toLocaleDateString()}</td>
+            <td class="py-3.5 px-6 text-xs text-gray-500">${rxDate(file.updatedAt)}</td>
             <td class="py-3.5 px-6 text-xs text-gray-500">${formatBytes(file.size)}</td>
             <td class="py-3.5 px-6 text-right space-x-1 relative" onclick="event.stopPropagation()">
                 <button onclick="previewFile(${jsArg(file.name)})" class="text-gray-400 hover:text-blue-600 transition-colors cursor-pointer p-1" title="Preview"><i data-lucide="eye" class="w-4 h-4"></i></button>
@@ -796,7 +796,7 @@ function renderFiles() {
                 ${cardThumbnailHtml}
                 <div class="file-card-body p-4">
                     <h4 class="font-semibold text-sm text-gray-900 truncate mb-1" title="${escHtml(file.name)}">${escHtml(file.name)}</h4>
-                    <p class="text-xs text-gray-400">${formatBytes(file.size)} • ${new Date(file.updatedAt).toLocaleDateString()}</p>
+                    <p class="text-xs text-gray-400">${formatBytes(file.size)} • ${rxDate(file.updatedAt)}</p>
                 </div>
             </div>
             <div class="file-card-actions flex justify-between items-center px-3 py-2 border-t border-gray-100 bg-gray-50/50" onclick="event.stopPropagation()">
@@ -1616,12 +1616,11 @@ async function loadUsersTable() {
             tr.className = "hover:bg-gray-50/50 transition-colors";
             tr.innerHTML = `
                 <td class="py-3.5 px-6 font-medium text-gray-900 flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
-                        ${u.username.charAt(0).toUpperCase()}
-                    </div>
+                    <!-- <div class="w-8 h-8 rounded-full bg-blue-100 ...">${u.username.charAt(0).toUpperCase()}</div>  (now shows the profile picture) -->
+                    ${typeof avatarHtml === 'function' ? avatarHtml(u) : ''}
                     <div>
                         <div class="font-bold text-gray-800 text-xs">${escHtml(u.username)}</div>
-                        <div class="text-[10px] text-gray-400">Created: ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'Initial'}</div>
+                        <div class="text-[10px] text-gray-400">Created: ${u.createdAt ? rxDate(u.createdAt) : 'Initial'}</div>
                     </div>
                 </td>
                 <td class="py-3.5 px-6"><span class="px-2.5 py-1 text-xs font-semibold rounded-md ${u.role === 'admin' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-gray-100 text-gray-600'}">${u.role.toUpperCase()}</span></td>
@@ -1981,7 +1980,7 @@ async function loadTrashTable() {
                 </td>
                 <td class="py-3.5 px-6 text-xs text-gray-500"><code>${escHtml(item.originalRelPath)}</code></td>
                 <td class="py-3.5 px-6 text-xs text-gray-500">${item.size ? formatBytes(item.size) : '—'}</td>
-                <td class="py-3.5 px-6 text-xs text-gray-500">${new Date(item.deletedAt).toLocaleDateString()}</td>
+                <td class="py-3.5 px-6 text-xs text-gray-500">${rxDate(item.deletedAt)}</td>
                 <td class="py-3.5 px-6 text-right space-x-2">
                     <button onclick="restoreTrashItem(${jsArg(item.trashId)})" class="px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium text-xs rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1">
                         <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Restore

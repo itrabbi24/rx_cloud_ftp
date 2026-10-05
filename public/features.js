@@ -437,7 +437,7 @@ async function loadVaultFiles() {
                 <div class="p-2.5 ${fm.color} rounded-xl shrink-0"><i data-lucide="${fm.icon}" class="w-5 h-5"></i></div>
                 <div class="min-w-0 flex-1">
                     <div class="font-semibold text-sm text-gray-900 truncate" title="${escAttr(f.name)}">${escAttr(f.name)}</div>
-                    <div class="text-[11px] text-gray-400">${formatBytes(f.size || 0)} • ${new Date(f.updatedAt).toLocaleDateString()}</div>
+                    <div class="text-[11px] text-gray-400">${formatBytes(f.size || 0)} • ${rxDate(f.updatedAt)}</div>
                 </div>
             </div>
             <div class="flex items-center gap-1 border-t border-gray-100 pt-2">

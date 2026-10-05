@@ -13,7 +13,7 @@ namespace RxCloude
     public class MainForm : Form
     {
         // Keep in sync with package.json "version" and the web UI.
-        public const string AppVersion = "1.3.2";
+        public const string AppVersion = "1.3.3";
 
         private TextBox txtFolder;
         private TextBox txtPort;

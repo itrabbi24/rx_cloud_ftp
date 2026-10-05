@@ -75,6 +75,12 @@ body.rx-dragging #driveScreen::after {
     font-size: 10px; font-weight: 700; letter-spacing: 0;
 }
 .folder-card { min-height: 0; }
+/* Give the name/date column the room: relative dates ("9 minutes ago") were
+   clipped next to the star and menu buttons. */
+.folder-card .p-2\.5 { padding: .25rem !important; }
+.folder-card .flex-1.min-w-0 { padding-right: 0 !important; gap: .6rem !important; }
+.folder-card .truncate { flex: 1 1 auto; min-width: 0; }
+.folder-card .rx-date { white-space: nowrap; }
 .folder-card > div:first-child { margin-bottom: 0 !important; }
 .file-thumb img { display: block; }
 #storage-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
