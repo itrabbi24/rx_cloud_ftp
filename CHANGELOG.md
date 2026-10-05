@@ -5,6 +5,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-10-05
+
+### Fixed
+- Folder upload by drag & drop: dropped folders were sent as one empty file and failed. Folders and their sub-folders are now read properly.
+- Folders with more than 500 files failed with "Too many files". Uploads are now sent in batches with one combined progress bar.
+- Empty sub-folders in a dropped folder are now created.
+
+### Added
+- Drop files or folders anywhere on the drive page, not only inside the upload dialog.
+
 ## [1.3.1] - 2026-10-05
 
 ### Fixed
@@ -63,7 +73,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.1.1...v1.2.0

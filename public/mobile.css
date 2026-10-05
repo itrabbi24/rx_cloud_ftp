@@ -57,6 +57,16 @@ button, a, label, input[type="checkbox"] { touch-action: manipulation; }
 .rx-swal-cancel:hover { background: #e2e8f0; }
 .rx-swal-btn:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
 
+/* Drop files or folders anywhere on the drive page */
+body.rx-dragging #driveScreen::after {
+    content: "Drop files or folders to upload";
+    position: fixed; inset: 12px; z-index: 90; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    border: 3px dashed #3b82f6; border-radius: 24px;
+    background: rgba(239, 246, 255, .88); color: #1d4ed8;
+    font-size: 18px; font-weight: 700;
+}
+
 /* --- Desktop polish -------------------------------------------------- */
 .section-count {
     display: inline-flex; align-items: center; justify-content: center;
