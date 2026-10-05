@@ -1,0 +1,302 @@
+/* =====================================================================
+   Rx Cloude - app shell & responsive layer
+   Loaded after the Tailwind runtime. Desktop gets small polish fixes; below
+   768px the drive becomes a native-feeling app: compact top bar, 2-column
+   tiles, bottom tab bar with an upload button, bottom-sheet menus/dialogs.
+   ===================================================================== */
+
+:root {
+    --rx-blue: #2563eb;
+    --rx-nav-h: 64px;
+    --rx-safe-b: env(safe-area-inset-bottom, 0px);
+    --rx-safe-t: env(safe-area-inset-top, 0px);
+}
+
+html, body { height: 100%; }
+body {
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+}
+/* 100vh on phones includes the hidden browser toolbar, which pushed the
+   bottom of the app off screen. dvh tracks the visible viewport. */
+@supports (height: 100dvh) {
+    body.h-screen, #driveScreen { height: 100dvh !important; }
+}
+
+button, a, label, input[type="checkbox"] { touch-action: manipulation; }
+
+/* <main> is a scrolling flex column; without this the header and chip row
+   were squeezed (the phone header collapsed to 17px and overlapped). */
+#app-header, #mobileFilterRow, #main-content { flex-shrink: 0; }
+
+/* First-login password change cannot be skipped, so hide its close buttons. */
+#changePassModal.pass-forced button[onclick="closeChangePassModal()"] { display: none !important; }
+
+/* --- SweetAlert2 dialogs, matched to the app's look ------------------ */
+.swal2-container { z-index: 10000 !important; }
+.swal2-container.swal2-backdrop-show { background: rgba(15, 23, 42, .45) !important; backdrop-filter: blur(2px); }
+.rx-swal-popup {
+    border-radius: 22px !important; padding: 26px 22px 22px !important;
+    width: min(400px, calc(100vw - 32px)) !important;
+    font-family: Inter, 'Segoe UI', Arial, sans-serif !important;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, .35) !important;
+}
+.rx-swal-popup .swal2-icon { transform: scale(.78); margin: 4px auto 6px !important; }
+.rx-swal-title { font-size: 18px !important; font-weight: 700 !important; color: #0f172a !important; padding: 0 !important; }
+.rx-swal-text { font-size: 14px !important; color: #64748b !important; margin: 8px 0 0 !important; line-height: 1.5 !important; word-break: break-word; }
+.rx-swal-actions { gap: 10px; width: 100%; margin-top: 22px !important; flex-wrap: nowrap !important; }
+.rx-swal-btn {
+    flex: 1; padding: 11px 16px; border-radius: 14px; border: 0;
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s ease;
+}
+.rx-swal-confirm { background: #2563eb; color: #fff; box-shadow: 0 6px 14px -6px rgba(37, 99, 235, .6); }
+.rx-swal-confirm:hover { background: #1d4ed8; }
+.rx-swal-confirm.rx-swal-danger { background: #dc2626; box-shadow: 0 6px 14px -6px rgba(220, 38, 38, .55); }
+.rx-swal-confirm.rx-swal-danger:hover { background: #b91c1c; }
+.rx-swal-cancel { background: #f1f5f9; color: #334155; }
+.rx-swal-cancel:hover { background: #e2e8f0; }
+.rx-swal-btn:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+
+/* --- Desktop polish -------------------------------------------------- */
+.section-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.5rem; height: 1.25rem; padding: 0 .4rem;
+    border-radius: 9999px; background: #eef2ff; color: #4f46e5;
+    font-size: 10px; font-weight: 700; letter-spacing: 0;
+}
+.folder-card { min-height: 0; }
+.folder-card > div:first-child { margin-bottom: 0 !important; }
+.file-thumb img { display: block; }
+#storage-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* Bottom nav / sheets do not exist on desktop. */
+#mobileBottomNav, #fabSheet, #sheetBackdrop { display: none; }
+
+/* --- Phone & small tablet ------------------------------------------- */
+@media (max-width: 767.98px) {
+    /* iOS zooms into any input under 16px; keep the page steady. */
+    input[type="text"], input[type="password"], input[type="number"],
+    input[type="search"], input[type="email"], select, textarea {
+        font-size: 16px !important;
+    }
+
+    /* Top app bar */
+    #app-header {
+        padding: calc(var(--rx-safe-t) + 8px) 12px 8px !important;
+        min-height: 0 !important;
+        row-gap: 8px !important;
+        box-shadow: 0 1px 0 rgba(15, 23, 42, .06);
+    }
+    #app-header .hdr-menu { display: none !important; }
+    #app-header .hdr-brand { display: flex !important; }
+    #app-header .hdr-newfolder,
+    #app-header .hdr-upload { display: none !important; }
+    #app-header .hdr-profile { border-left: 0 !important; padding-left: 0 !important; }
+    #search-input {
+        width: 100% !important;
+        padding-top: .6rem !important; padding-bottom: .6rem !important;
+        border-radius: 14px !important;
+        background: #f1f5f9 !important; border-color: transparent !important;
+    }
+    #app-header .search-wrap { width: 100% !important; flex: 1 1 100% !important; }
+
+    /* Category chips row sits right under the bar */
+    #mobileFilterRow { top: 0 !important; position: relative !important; padding: 8px 12px !important; }
+    #mobileFilterRow .cat-pill { padding: .45rem .9rem !important; }
+
+    /* Content clears the bottom tab bar */
+    #main-scroll { padding-bottom: calc(var(--rx-nav-h) + var(--rx-safe-b) + 16px); }
+    #main-content { padding: 12px !important; }
+
+    #breadcrumb-container { margin-bottom: 12px !important; font-size: 13px; }
+
+    /* Folders: compact 2-column tiles */
+    #folders-container-wrapper { margin-bottom: 20px !important; }
+    #folders-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+    .folder-card { padding: 12px !important; border-radius: 16px !important; }
+    .folder-card .p-2\.5 { padding: 0 !important; }
+    .folder-card h3 { font-size: 13px !important; }
+    .folder-card p { font-size: 11px !important; }
+    .folder-card button[title="Star Folder"] { display: none; }
+
+    /* Files: 2-column cards with square previews */
+    #files-grid-view { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+    .file-card-wrapper { border-radius: 16px !important; }
+    .file-card-wrapper .file-thumb { height: auto !important; aspect-ratio: 1 / 1; }
+    .file-card-wrapper .file-thumb i[data-lucide], .file-card-wrapper .file-thumb svg { width: 34px; height: 34px; }
+    .file-card-wrapper .file-card-body { padding: 8px 10px 0 !important; }
+    .file-card-wrapper .file-card-body h4 { font-size: 12.5px !important; margin-bottom: 0 !important; }
+    .file-card-wrapper .file-card-body p { font-size: 10.5px !important; }
+    /* Quick icons are too small to tap; the ⋮ sheet holds every action. */
+    .file-card-wrapper .file-card-actions { padding: 2px 4px 4px !important; border-top: 0 !important; background: transparent !important; }
+    .file-card-wrapper .file-card-actions > div:first-child { display: none !important; }
+    .file-card-wrapper .file-card-actions { justify-content: flex-end !important; margin-top: -30px; }
+    .file-card-wrapper .file-card-actions .action-dropdown-btn { padding: 8px !important; }
+    .file-card-wrapper:hover { transform: none; }
+
+    /* List view: hide secondary columns instead of side-scrolling */
+    #files-table-view table { min-width: 0 !important; }
+    #files-table-view th:nth-child(3), #files-table-view td:nth-child(3),
+    #files-table-view th:nth-child(4), #files-table-view td:nth-child(4) { display: none; }
+    #files-table-view td:nth-child(6) button:not([title="Download"]) { display: none; }
+    #files-table-view td, #files-table-view th { padding-left: 8px !important; padding-right: 8px !important; }
+    #files-table-view td:nth-child(2) span.truncate { max-width: 46vw !important; }
+
+    /* Selection bar floats above the tab bar */
+    #bulk-action-bar:not(.hidden) {
+        position: fixed; left: 8px; right: 8px; z-index: 35;
+        bottom: calc(var(--rx-nav-h) + var(--rx-safe-b) + 8px);
+        margin: 0 !important; border-radius: 18px !important;
+        box-shadow: 0 10px 30px -8px rgba(15, 23, 42, .35);
+        background: #fff !important;
+    }
+    #bulk-action-bar button { padding-top: .6rem !important; padding-bottom: .6rem !important; }
+
+    /* Dialogs become bottom sheets */
+    .fixed.inset-0.items-center.justify-center:not(#loginScreen):not(#codeEditorModal):not(#previewModal) {
+        align-items: flex-end !important; padding: 0 !important;
+    }
+    .fixed.inset-0.items-center.justify-center:not(#loginScreen):not(#codeEditorModal):not(#previewModal) > div {
+        max-width: 100% !important; width: 100% !important;
+        border-radius: 24px 24px 0 0 !important;
+        max-height: 92dvh !important; overflow-y: auto;
+        padding-bottom: calc(20px + var(--rx-safe-b)) !important;
+        animation: rx-sheet-up .22s ease-out;
+    }
+    .fixed.inset-0.items-center.justify-center:not(#loginScreen):not(#codeEditorModal):not(#previewModal) > div::before {
+        content: ''; display: block; width: 40px; height: 4px; border-radius: 4px;
+        background: #cbd5e1; margin: -6px auto 14px;
+    }
+    /* Full-screen viewers */
+    #previewModal, #codeEditorModal { padding: 0 !important; }
+    #previewModal > div, #codeEditorModal > div {
+        max-width: 100% !important; height: 100dvh !important;
+        border-radius: 0 !important; border: 0 !important;
+        padding-top: var(--rx-safe-t);
+    }
+    #previewContent img, #previewContent video { max-height: calc(100dvh - 90px) !important; border-radius: 0 !important; }
+
+    /* ⋮ menus become an action sheet */
+    .action-dropdown-menu:not(.hidden) {
+        position: fixed !important; left: 0 !important; right: 0 !important;
+        top: auto !important; bottom: 0 !important;
+        width: 100% !important; z-index: 80 !important;
+        border-radius: 22px 22px 0 0 !important; border: 0 !important;
+        padding: 10px 6px calc(12px + var(--rx-safe-b)) !important;
+        font-size: 15px !important;
+        max-height: 80dvh; overflow-y: auto;
+        animation: rx-sheet-up .2s ease-out;
+        box-shadow: 0 -10px 40px rgba(15, 23, 42, .25) !important;
+    }
+    .action-dropdown-menu:not(.hidden) > div:first-child { font-size: 13px; padding: 4px 16px 10px !important; }
+    .action-dropdown-menu:not(.hidden) button { padding: 13px 16px !important; border-radius: 12px; }
+    .action-dropdown-menu:not(.hidden) button i, .action-dropdown-menu:not(.hidden) button svg { width: 20px !important; height: 20px !important; }
+    .action-dropdown-menu:not(.hidden) .w-4.h-4.rounded-full { width: 26px !important; height: 26px !important; padding: 0 !important; }
+
+    #sheetBackdrop.show {
+        display: block; position: fixed; inset: 0; z-index: 75;
+        background: rgba(15, 23, 42, .4); animation: rx-fade .15s ease-out;
+    }
+
+    /* Bottom tab bar */
+    #mobileBottomNav {
+        display: grid; grid-template-columns: repeat(5, 1fr); align-items: center;
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+        height: calc(var(--rx-nav-h) + var(--rx-safe-b));
+        padding-bottom: var(--rx-safe-b);
+        background: rgba(255, 255, 255, .96);
+        -webkit-backdrop-filter: saturate(180%) blur(14px); backdrop-filter: saturate(180%) blur(14px);
+        border-top: 1px solid #e2e8f0;
+    }
+    #driveScreen.hidden ~ #mobileBottomNav, #loginScreen:not(.hidden) ~ #mobileBottomNav { display: none; }
+    .mnav-btn {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+        height: 100%; font-size: 10.5px; font-weight: 600; color: #64748b; background: none; border: 0;
+    }
+    .mnav-btn svg { width: 22px; height: 22px; stroke-width: 2; }
+    .mnav-btn.active { color: var(--rx-blue); }
+    .mnav-btn.active svg { stroke-width: 2.4; }
+    .mnav-fab {
+        width: 54px; height: 54px; margin: -22px auto 0; border-radius: 18px; border: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff;
+        box-shadow: 0 8px 20px -6px rgba(37, 99, 235, .7);
+        transition: transform .15s ease;
+    }
+    .mnav-fab:active { transform: scale(.94); }
+    .mnav-fab svg { width: 26px; height: 26px; }
+
+    /* "+" sheet */
+    #fabSheet.show {
+        display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 80;
+        background: #fff; border-radius: 24px 24px 0 0;
+        padding: 10px 14px calc(18px + var(--rx-safe-b));
+        box-shadow: 0 -10px 40px rgba(15, 23, 42, .25);
+        animation: rx-sheet-up .2s ease-out;
+    }
+    .fab-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .fab-item {
+        display: flex; flex-direction: column; align-items: center; gap: 8px;
+        padding: 12px 4px; border-radius: 16px; font-size: 11.5px; font-weight: 600; color: #334155;
+        background: none; border: 0;
+    }
+    .fab-item:active { background: #f1f5f9; }
+    .fab-item .fab-ic { width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
+    .fab-item .fab-ic svg { width: 24px; height: 24px; }
+
+    /* Toast and mini player sit above the tab bar */
+    #toast {
+        bottom: calc(var(--rx-nav-h) + var(--rx-safe-b) + 12px) !important;
+        left: 12px !important; right: 12px !important; max-width: none !important;
+        border-radius: 14px !important;
+    }
+    #floatingMediaPlayer {
+        left: 8px !important; right: 8px !important; width: auto !important;
+        bottom: calc(var(--rx-nav-h) + var(--rx-safe-b) + 8px) !important;
+    }
+
+    /* Drawer above the tab bar, with safe area */
+    #main-sidebar { padding-top: var(--rx-safe-t); width: 82vw !important; max-width: 320px; z-index: 60 !important; }
+    #mobile-sidebar-overlay { z-index: 55 !important; }
+
+    /* Search and file-type chips only make sense on the Drive tab. */
+    body[data-tab]:not([data-tab="drive"]) #mobileFilterRow,
+    body[data-tab]:not([data-tab="drive"]) #app-header .search-wrap,
+    body[data-tab]:not([data-tab="drive"]) #app-header #grid-view-btn,
+    body[data-tab]:not([data-tab="drive"]) #app-header #list-view-btn { display: none !important; }
+
+    /* Trash & users tables: one card per row instead of a clipped table */
+    #view-users table, #view-trash table { font-size: 13px; min-width: 0 !important; }
+    #view-users thead, #view-trash thead { display: none; }
+    #view-users tbody tr, #view-trash tbody tr {
+        display: grid; grid-template-columns: 1fr auto; gap: 2px 10px;
+        padding: 12px 14px; align-items: center;
+    }
+    #view-users tbody td, #view-trash tbody td { display: block; padding: 0 !important; border: 0 !important; }
+    #view-trash tbody td:first-child, #view-users tbody td:first-child { grid-column: 1 / -1; }
+    #view-trash tbody td:last-child, #view-users tbody td:last-child { grid-column: 1 / -1; text-align: left !important; margin-top: 8px; }
+    #view-trash tbody td[colspan], #view-users tbody td[colspan] { grid-column: 1 / -1; text-align: center; padding: 24px 0 !important; }
+    #view-trash tbody td span.truncate { max-width: 70vw !important; }
+
+    /* Dialog headers: drop the long marketing subtitles on phones */
+    #uploadModal h3 + p, #createUserModal h3 + p, #storageAnalyticsModal h3 + p, #cleanerModal h3 + p { display: none; }
+    #uploadModal h3 { font-size: 16px !important; }
+    #view-users h1, #view-trash h1, #view-starred h1 { font-size: 20px !important; }
+
+    /* Login card fills the phone nicely */
+    #loginScreen > div:first-child { padding: 28px 22px !important; border-radius: 24px !important; }
+    #loginScreen > div:last-child { position: static !important; margin-top: 20px; justify-content: center; }
+    #loginScreen { flex-direction: column; }
+}
+
+/* Running as an installed app (home-screen): no browser chrome at all. */
+@media (display-mode: standalone) and (max-width: 767.98px) {
+    #app-header { padding-top: calc(var(--rx-safe-t) + 10px) !important; }
+}
+
+@keyframes rx-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes rx-fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
