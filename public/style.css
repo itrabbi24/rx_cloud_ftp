@@ -795,3 +795,7 @@ body {
   width: 0%;
   transition: width 0.1s linear;
 }
+
+/* Indeterminate top progress bar (folder loading / search) */
+#top-progress .top-progress-bar { animation: rx-progress 1.1s ease-in-out infinite; }
+@keyframes rx-progress { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }

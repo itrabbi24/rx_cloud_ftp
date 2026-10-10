@@ -74,6 +74,10 @@ function applyConfigUpdate(config, body) {
   if (src.maxUploadMB !== undefined) {
     next.maxUploadMB = Math.max(0, Math.floor(Number(src.maxUploadMB) || 0));
   }
+  // Total space the whole drive may use, set by the main admin (0 = no limit).
+  if (src.driveLimitGB !== undefined) {
+    next.driveLimitGB = Math.max(0, Math.round((Number(src.driveLimitGB) || 0) * 100) / 100);
+  }
   if (src.allowRegistration !== undefined) {
     next.allowRegistration = !!src.allowRegistration;
   }

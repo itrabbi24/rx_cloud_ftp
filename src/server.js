@@ -278,6 +278,24 @@ async function getFolderSizeAsync(dirPath) {
   return total;
 }
 
+// Total bytes stored on the whole shared drive (for the admin's drive limit).
+// Returns the cached figure (refreshing it in the background); `exact` does a
+// blocking walk when the cache is stale, used right before accepting uploads.
+const DRIVE_USAGE_KEY = '__drive__';
+function driveUsageBytes(cfg, exact) {
+  const cached = usageCache.get(DRIVE_USAGE_KEY);
+  // Uploads re-measure after 10 s so files copied in outside the app count soon.
+  const fresh = cached && Date.now() - cached.at < (exact ? 10000 : 30000);
+  if (fresh) return cached.bytes;
+  if (exact) {
+    const bytes = getFolderSize(cfg.sharedFolder);
+    usageCache.set(DRIVE_USAGE_KEY, { bytes, at: Date.now() });
+    return bytes;
+  }
+  refreshUsageInBackground(DRIVE_USAGE_KEY, cfg.sharedFolder);
+  return cached ? cached.bytes : null;
+}
+
 const usageScansRunning = new Set();
 function refreshUsageInBackground(cacheKey, rootPath) {
   if (usageScansRunning.has(cacheKey)) return null;
@@ -617,7 +635,8 @@ function createServerApp() {
     res.json({
       version: APP_VERSION,
       maxUploadMB: cfg.maxUploadMB !== undefined ? cfg.maxUploadMB : 1024,
-      allowRegistration: !!cfg.allowRegistration
+      allowRegistration: !!cfg.allowRegistration,
+      driveLimitGB: Number(cfg.driveLimitGB) || 0
     });
   });
 
@@ -639,8 +658,11 @@ function createServerApp() {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Admin permission required' });
     }
-    const { maxUploadMB, allowRegistration, sessionDays } = req.body;
-    const cfg = applyConfigUpdate(getConfig(), { maxUploadMB, allowRegistration, sessionDays });
+    // const { maxUploadMB, allowRegistration, sessionDays } = req.body;
+    // const cfg = applyConfigUpdate(getConfig(), { maxUploadMB, allowRegistration, sessionDays });
+    const { maxUploadMB, allowRegistration, sessionDays, driveLimitGB } = req.body;
+    const cfg = applyConfigUpdate(getConfig(), { maxUploadMB, allowRegistration, sessionDays, driveLimitGB });
+    driveUsageBytes(cfg, true);
 
     saveConfig(cfg);
     broadcastLog('info', `Admin updated server settings: Global Max Upload = ${cfg.maxUploadMB > 0 ? cfg.maxUploadMB + ' MB' : 'Unlimited'}, Public Registration = ${cfg.allowRegistration ? 'Enabled' : 'Disabled'}, Session Days = ${getSessionDays(cfg)}`);
@@ -648,6 +670,7 @@ function createServerApp() {
       success: true,
       config: {
         maxUploadMB: cfg.maxUploadMB,
+        driveLimitGB: Number(cfg.driveLimitGB) || 0,
         allowRegistration: cfg.allowRegistration,
         sessionDays: getSessionDays(cfg),
         port: cfg.port,
@@ -915,14 +938,85 @@ function createServerApp() {
         }
       }
 
+      // res.json({
+      //   currentPath: relPath ? '/' + relPath : '/',
+      //   files,
+      //   quota: {
+      //     limitMB: req.user.quotaMB,
+      //     usedBytes
+      //   }
+      // });
+      // A user without a personal quota is bound by the admin's drive-wide
+      // limit, measured against everything stored on the drive.
+      const driveLimitMB = (Number(cfg.driveLimitGB) || 0) * 1024;
+      let limitMB = req.user.quotaMB || 0;
+      let quotaUsed = usedBytes;
+      if (!(limitMB > 0) && driveLimitMB > 0) {
+        limitMB = driveLimitMB;
+        const drive = driveUsageBytes(cfg);
+        quotaUsed = drive !== null ? drive : usedBytes;
+      }
       res.json({
         currentPath: relPath ? '/' + relPath : '/',
         files,
         quota: {
-          limitMB: req.user.quotaMB,
-          usedBytes
+          limitMB,
+          usedBytes: quotaUsed,
+          scope: (req.user.quotaMB || 0) > 0 ? 'user' : (driveLimitMB > 0 ? 'drive' : 'none')
         }
       });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 1b. Search by name: in the current folder and everything below it
+  // (scope=folder) or across the user's whole drive (scope=all). Async walk so
+  // a big drive never blocks other requests; capped to keep responses small.
+  currentApp.get('/api/files/search', authenticateToken, async (req, res) => {
+    const cfg = getConfig();
+    const q = String(req.query.q || '').trim().toLowerCase();
+    if (!q) return res.json({ results: [], truncated: false });
+    const startSub = req.query.scope === 'all' ? '' : String(req.query.path || '');
+    if (isVaultPath(startSub)) return res.status(403).json({ error: 'Vault files require vault authentication' });
+    if (!hasPermission(req.user, 'view', startSub)) return res.status(403).json({ error: 'View permission denied' });
+    const safe = resolveSafePath(cfg.sharedFolder, req.user.folderScope, startSub);
+    if (!safe || !fs.existsSync(safe.targetPath)) return res.status(404).json({ error: 'Directory not found' });
+
+    const LIMIT = 500;
+    const deadline = Date.now() + 15000;
+    const results = [];
+    let truncated = false;
+    const stack = [safe.targetPath];
+    try {
+      while (stack.length) {
+        if (results.length >= LIMIT || Date.now() > deadline) { truncated = true; break; }
+        const dir = stack.pop();
+        let items;
+        try { items = await fs.promises.readdir(dir, { withFileTypes: true }); } catch (e) { continue; }
+        const dirRel = path.relative(safe.userRoot, dir).replace(/\\/g, '/');
+        for (const item of items) {
+          const n = item.name;
+          if (n === '.trash' || n.startsWith('.trash_meta') || n === '.vault' || n.startsWith('.vault_meta')) continue;
+          const relPath = dirRel ? `${dirRel}/${n}` : n;
+          const isDir = item.isDirectory();
+          if (isDir) {
+            if (hasPermission(req.user, 'view', '/' + relPath)) stack.push(path.join(dir, n));
+          }
+          if (!n.toLowerCase().includes(q)) continue;
+          let st = null;
+          try { st = await fs.promises.stat(path.join(dir, n)); } catch (e) {}
+          results.push({
+            name: n,
+            isDirectory: isDir,
+            dir: '/' + dirRel,
+            size: isDir || !st ? null : st.size,
+            updatedAt: st ? st.mtime : null
+          });
+          if (results.length >= LIMIT) { truncated = true; break; }
+        }
+      }
+      res.json({ results, truncated });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -1007,6 +1101,21 @@ function createServerApp() {
       }
     }
 
+    // Drive-wide limit set by the main admin applies to every account.
+    {
+      const cfg = getConfig();
+      const driveLimitBytes = (Number(cfg.driveLimitGB) || 0) * 1024 * 1024 * 1024;
+      if (driveLimitBytes > 0) {
+        const used = driveUsageBytes(cfg, true);
+        // Count the incoming batch too, so one big upload cannot overshoot.
+        const incoming = Number(req.headers['content-length']) || 0;
+        // if (used !== null && used >= driveLimitBytes) {
+        if (used !== null && used + incoming > driveLimitBytes) {
+          return res.status(400).json({ error: `Drive storage limit reached (${cfg.driveLimitGB} GB). Ask the administrator for more space.` });
+        }
+      }
+    }
+
     makeUploader().array('files')(req, res, (err) => {
       if (err) {
         // A rejected batch must not leave half-written files behind.
@@ -1045,6 +1154,10 @@ function createServerApp() {
 
       const fileNames = req.files ? req.files.map(f => f.filename).join(', ') : '';
       broadcastLog('upload', `User "${req.user.username}" uploaded: ${fileNames}`);
+      // Keep the cached drive total in step so the drive limit sees new files.
+      const added = (req.files || []).reduce((sum, f) => sum + (f.size || 0), 0);
+      const driveCached = usageCache.get(DRIVE_USAGE_KEY);
+      if (driveCached) driveCached.bytes += added;
       res.json({ success: true, count: req.files ? req.files.length : 0 });
     });
   });
@@ -1509,6 +1622,7 @@ function createServerApp() {
       totalFiles,
       totalFolders,
       quotaMB: req.user.quotaMB || 0,
+      driveLimitMB: (Number(getConfig().driveLimitGB) || 0) * 1024,
       breakdown
     });
   });

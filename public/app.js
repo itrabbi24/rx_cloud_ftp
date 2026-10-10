@@ -185,8 +185,17 @@ function showDirectoryLoading() {
     if (window.lucide) lucide.createIcons();
 }
 
+// Thin bar under the header; counted so overlapping loads don't hide it early.
+let topProgressCount = 0;
+function setTopProgress(on) {
+    topProgressCount = Math.max(0, topProgressCount + (on ? 1 : -1));
+    const el = document.getElementById('top-progress');
+    if (el) el.classList.toggle('hidden', topProgressCount === 0);
+}
+
 async function loadDirectory(targetPath) {
     const requestId = ++directoryRequestId;
+    setTopProgress(true);
     // Only show the skeleton if the folder does not answer almost instantly.
     const loadingTimer = setTimeout(() => { if (requestId === directoryRequestId) showDirectoryLoading(); }, 150);
     try {
@@ -194,6 +203,8 @@ async function loadDirectory(targetPath) {
         const data = await res.json();
         if (requestId !== directoryRequestId) return; // a newer folder was opened
         if (!res.ok) throw new Error(data.error || 'Failed to load directory');
+        // A folder search must follow the user into the new folder.
+        if (searchQuery && searchScope === 'folder') setTimeout(runRemoteSearch, 0);
 
         currentPath = data.currentPath;
         // filesList = data.files;
@@ -213,8 +224,10 @@ async function loadDirectory(targetPath) {
             if (data.quota.limitMB > 0) {
                 const usedMB = data.quota.usedBytes / (1024 * 1024);
                 const pct = Math.min(100, Math.round((usedMB / data.quota.limitMB) * 100));
-                storageBar.style.width = pct + '%';
-                storageText.innerText = `${usedStr} of ${data.quota.limitMB} MB`;
+                storageBar.style.width = Math.max(pct, 2) + '%';
+                // storageText.innerText = `${usedStr} of ${data.quota.limitMB} MB`;
+                storageText.innerText = `${usedStr} of ${formatBytes(data.quota.limitMB * 1024 * 1024)} (${pct}%)`;
+                storageBar.classList.toggle('bg-red-500', pct >= 90);
             } else {
                 storageBar.style.width = data.quota.usedBytes > 0 ? '12%' : '4%';
                 storageText.innerText = `${usedStr} used (Unlimited)`;
@@ -229,6 +242,7 @@ async function loadDirectory(targetPath) {
         }
     } finally {
         clearTimeout(loadingTimer);
+        setTopProgress(false);
     }
 }
 
@@ -296,11 +310,113 @@ function renderBreadcrumbs() {
     if (window.lucide) lucide.createIcons();
 }
 
+// function handleSearch(q) {
+//     searchQuery = q.toLowerCase();
+//     filesRenderLimit = FILES_PAGE_SIZE;
+//     foldersRenderLimit = FILES_PAGE_SIZE;
+//     renderDashboard();
+// }
+// Typing still filters the open folder instantly; the server then searches
+// the sub-folders (scope "This folder") or the whole drive ("All folders").
+let searchScope = 'folder';
+let searchTimer = null;
+let searchRequestId = 0;
 function handleSearch(q) {
     searchQuery = q.toLowerCase();
     filesRenderLimit = FILES_PAGE_SIZE;
     foldersRenderLimit = FILES_PAGE_SIZE;
     renderDashboard();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(runRemoteSearch, 350);
+}
+
+function handleSearchScope(scope) {
+    searchScope = scope === 'all' ? 'all' : 'folder';
+    if (searchQuery) runRemoteSearch();
+}
+
+async function runRemoteSearch() {
+    const wrap = document.getElementById('search-results-wrapper');
+    const list = document.getElementById('search-results');
+    if (!wrap || !list) return;
+    const q = searchQuery.trim();
+    const requestId = ++searchRequestId;
+    if (!q) {
+        wrap.classList.add('hidden'); list.innerHTML = '';
+        setSectionHidden('folders-container-wrapper', false);
+        setSectionHidden('files-container-wrapper', false);
+        return;
+    }
+
+    wrap.classList.remove('hidden');
+    document.getElementById('search-results-title').innerText = searchScope === 'all' ? 'Results in all folders' : 'Results in this folder & sub-folders';
+    document.getElementById('search-results-count').innerText = '…';
+    list.innerHTML = `<div class="py-6 text-center text-xs text-gray-400"><span class="inline-flex items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin text-blue-500"></i> Searching...</span></div>`;
+    if (window.lucide) lucide.createIcons();
+    setTopProgress(true);
+    try {
+        const res = await apiFetch(`/api/files/search?q=${encodeURIComponent(q)}&scope=${searchScope}&path=${encodeURIComponent(currentPath)}`);
+        const data = await res.json();
+        if (requestId !== searchRequestId) return;
+        if (!res.ok) throw new Error(data.error || 'Search failed');
+        renderSearchResults(data.results || [], data.truncated);
+    } catch (err) {
+        if (requestId === searchRequestId) list.innerHTML = `<div class="py-6 text-center text-xs text-red-500">${escHtml(err.message)}</div>`;
+    } finally {
+        setTopProgress(false);
+    }
+}
+
+function renderSearchResults(results, truncated) {
+    const list = document.getElementById('search-results');
+    // While results are listed, hide the open folder's sections if the search left them empty.
+    const anyLocalFolder = filesList.some(f => f.isDirectory && f.name.toLowerCase().includes(searchQuery));
+    const anyLocalFile = filesList.some(f => !f.isDirectory && f.name.toLowerCase().includes(searchQuery));
+    setSectionHidden('folders-container-wrapper', results.length > 0 && !anyLocalFolder);
+    setSectionHidden('files-container-wrapper', results.length > 0 && !anyLocalFile);
+    document.getElementById('search-results-count').innerText = results.length + (truncated ? '+' : '');
+    if (!results.length) {
+        list.innerHTML = '<div class="py-6 text-center text-xs text-gray-400">Nothing found.</div>';
+        return;
+    }
+    list.innerHTML = '';
+    results.forEach(r => {
+        const full = r.dir === '/' ? '/' + r.name : r.dir + '/' + r.name;
+        const meta = r.isDirectory ? { icon: 'folder', color: 'bg-amber-50 text-amber-500' } : getFileMeta(r.name);
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-blue-50/50 cursor-pointer';
+        row.innerHTML = `<span class="p-2 rounded-lg ${meta.color} shrink-0"><i data-lucide="${meta.icon}" class="w-4 h-4"></i></span>
+            <span class="min-w-0 flex-1"><span class="block text-xs font-semibold text-gray-800 truncate">${escHtml(r.name)}</span>
+            <span class="block text-[11px] text-gray-400 truncate">${escHtml(r.dir === '/' ? 'My Drive' : 'My Drive' + r.dir)}</span></span>
+            <span class="text-[11px] text-gray-400 shrink-0">${r.isDirectory ? 'Folder' : formatBytes(r.size || 0)}</span>`;
+        // Folders open directly; files open the folder that holds them.
+        row.onclick = () => clearSearchAndOpen(r.isDirectory ? full : r.dir);
+        list.appendChild(row);
+    });
+    if (truncated) {
+        const more = document.createElement('div');
+        more.className = 'py-2 text-center text-[11px] text-gray-400';
+        more.innerText = 'Showing the first results only. Type more of the name to narrow it down.';
+        list.appendChild(more);
+    }
+    if (window.lucide) lucide.createIcons();
+}
+
+function setSectionHidden(id, hide) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('hidden', !!hide);
+}
+
+function clearSearchAndOpen(target) {
+    const input = document.getElementById('search-input');
+    if (input) input.value = '';
+    searchQuery = '';
+    ++searchRequestId;
+    document.getElementById('search-results-wrapper').classList.add('hidden');
+    setSectionHidden('folders-container-wrapper', false);
+    setSectionHidden('files-container-wrapper', false);
+    loadDirectory(target);
 }
 
 function switchTab(tab) {
@@ -352,8 +468,65 @@ function switchViewMode(mode) {
 
 // Render Dashboard
 function renderDashboard() {
+    renderRecent();
     renderFolders();
     renderFiles();
+}
+
+// Sidebar "My Drive" always goes back to the drive root.
+function goMyDrive() {
+    currentPath = '/';
+    switchTab('drive');
+}
+
+// --- Recent: files/folders this user opened lately (kept in this browser) ---
+const RECENT_MAX = 12;
+function recentKey() {
+    return 'rx_recent_' + ((currentUser && currentUser.username) || 'anon');
+}
+function getRecent() {
+    try { return JSON.parse(localStorage.getItem(recentKey()) || '[]'); } catch (e) { return []; }
+}
+function addRecent(name, isDirectory, dir) {
+    dir = dir || currentPath;
+    const list = getRecent().filter(r => !(r.name === name && r.dir === dir));
+    list.unshift({ name, dir, isDirectory: !!isDirectory, at: Date.now() });
+    try { localStorage.setItem(recentKey(), JSON.stringify(list.slice(0, RECENT_MAX))); } catch (e) {}
+}
+function clearRecent() {
+    try { localStorage.removeItem(recentKey()); } catch (e) {}
+    renderRecent();
+}
+function renderRecent() {
+    const wrap = document.getElementById('recent-wrapper');
+    const list = document.getElementById('recent-list');
+    if (!wrap || !list) return;
+    const items = getRecent();
+    if (currentPath !== '/' || searchQuery || !items.length) { wrap.classList.add('hidden'); return; }
+    wrap.classList.remove('hidden');
+    list.innerHTML = '';
+    items.forEach(r => {
+        const meta = r.isDirectory ? { icon: 'folder', color: 'bg-amber-50 text-amber-500' } : getFileMeta(r.name);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'flex items-center gap-3 p-3 bg-white border border-gray-200/80 rounded-2xl text-left hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer min-w-0';
+        btn.innerHTML = `<span class="p-2 rounded-xl ${meta.color} shrink-0"><i data-lucide="${meta.icon}" class="w-4 h-4"></i></span>
+            <span class="min-w-0 flex-1"><span class="block text-xs font-semibold text-gray-800 truncate">${escHtml(r.name)}</span>
+            <span class="block text-[11px] text-gray-400 truncate">${escHtml(r.dir === '/' ? 'My Drive' : r.dir.split('/').pop())}</span></span>`;
+        btn.title = (r.dir === '/' ? '' : r.dir) + '/' + r.name;
+        btn.onclick = () => openRecent(r);
+        list.appendChild(btn);
+    });
+    if (window.lucide) lucide.createIcons();
+}
+async function openRecent(r) {
+    if (r.isDirectory) {
+        await loadDirectory(r.dir === '/' ? '/' + r.name : r.dir + '/' + r.name);
+        return;
+    }
+    await loadDirectory(r.dir);
+    if (filesList.some(f => f.name === r.name && !f.isDirectory)) previewFile(r.name);
+    else showToast('That file was moved or deleted.');
 }
 
 function getFileMeta(name) {
@@ -534,6 +707,7 @@ function renderFolders() {
 }
 
 function openFolder(name) {
+    addRecent(name, true);
     const target = currentPath === '/' ? '/' + name : currentPath + '/' + name;
     loadDirectory(target);
 }
@@ -694,8 +868,16 @@ function renderFiles() {
     filesGridView.innerHTML = '';
 
     if (files.length === 0) {
-        filesTableBody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-xs text-gray-400">No files found matching criteria.</td></tr>`;
-        filesGridView.innerHTML = `<div class="col-span-full py-8 text-center text-xs text-gray-400">No files found matching criteria.</div>`;
+        // filesTableBody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-xs text-gray-400">No files found matching criteria.</td></tr>`;
+        // filesGridView.innerHTML = `<div class="col-span-full py-8 text-center text-xs text-gray-400">No files found matching criteria.</div>`;
+        // Say when a category filter is what hides the files, with a one-click way back.
+        const hidden = selectedCategory !== 'all'
+            ? filesList.filter(f => !f.isDirectory && f.name.toLowerCase().includes(searchQuery)).length : 0;
+        const msg = hidden > 0
+            ? `${hidden} file${hidden === 1 ? '' : 's'} hidden by the "${escHtml(selectedCategory)}" filter. <button onclick="setFilterCategory('all')" class="ml-1 font-semibold text-blue-600 hover:underline cursor-pointer">Show all</button>`
+            : (filesList.some(f => !f.isDirectory) ? 'No files found matching criteria.' : 'This folder has no files.');
+        filesTableBody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-xs text-gray-400">${msg}</td></tr>`;
+        filesGridView.innerHTML = `<div class="col-span-full py-8 text-center text-xs text-gray-400">${msg}</div>`;
         updateBulkActionBar();
         return;
     }
@@ -927,6 +1109,7 @@ document.getElementById('renameForm').onsubmit = async (e) => {
 
 // Download
 function downloadFile(name) {
+    addRecent(name, false);
     const fullPath = currentPath === '/' ? '/' + name : currentPath + '/' + name;
     window.location.href = `/api/files/download?path=${encodeURIComponent(fullPath)}&token=${authToken}`;
 }
@@ -1518,6 +1701,7 @@ let currentPreviewFile = null;
 
 function previewFile(name) {
     currentPreviewFile = name;
+    addRecent(name, false);
     const ext = (name.split('.').pop() || '').toLowerCase();
     const fullPath = currentPath === '/' ? '/' + name : currentPath + '/' + name;
     const fileUrl = `/api/files/download?path=${encodeURIComponent(fullPath)}&preview=true&token=${authToken}`;
@@ -1742,6 +1926,8 @@ async function fetchServerConfig() {
         const regCheckbox = document.getElementById('settingAllowRegistration');
         if (regCheckbox) regCheckbox.checked = !!data.allowRegistration;
 
+        setDriveLimitUi(data.driveLimitGB);
+
         const sessionInput = document.getElementById('settingSessionDays');
         if (sessionInput && data.sessionDays) sessionInput.value = data.sessionDays;
 
@@ -1752,7 +1938,16 @@ async function fetchServerConfig() {
     } catch (e) {}
 }
 
+function setDriveLimitUi(gb) {
+    const input = document.getElementById('settingDriveLimitGB');
+    if (input) input.value = Number(gb) || 0;
+    const badge = document.getElementById('currentDriveLimitBadge');
+    if (badge) badge.innerText = Number(gb) > 0 ? `${gb} GB` : 'Unlimited';
+}
+
 async function saveGlobalServerConfig() {
+    const driveLimitInput = document.getElementById('settingDriveLimitGB');
+    const driveLimitGB = Math.max(0, Number(driveLimitInput && driveLimitInput.value) || 0);
     const input = document.getElementById('settingMaxUploadMB');
     const regCheckbox = document.getElementById('settingAllowRegistration');
     const sessionInput = document.getElementById('settingSessionDays');
@@ -1769,7 +1964,8 @@ async function saveGlobalServerConfig() {
         const res = await apiFetch('/api/config', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ maxUploadMB, allowRegistration, sessionDays })
+            // body: JSON.stringify({ maxUploadMB, allowRegistration, sessionDays })
+            body: JSON.stringify({ maxUploadMB, allowRegistration, sessionDays, driveLimitGB })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to save settings');
@@ -1793,6 +1989,8 @@ async function saveGlobalServerConfig() {
         if (sessionBadge) sessionBadge.innerText = `${appliedDays} days`;
 
         applyUploadLimitUi(appliedMB);
+        setDriveLimitUi(saved.driveLimitGB !== undefined ? saved.driveLimitGB : driveLimitGB);
+        loadDirectory(currentPath); // refresh the sidebar storage bar
 
         showToast(`Server settings saved! Upload limit: ${appliedMB > 0 ? appliedMB + ' MB' : 'Unlimited'}, session: ${appliedDays} days`);
     } catch (err) {
@@ -2393,6 +2591,8 @@ async function openStorageAnalyticsModal() {
         totalUsedEl.innerText = formatBytes(data.totalUsed);
         if (data.quotaMB > 0) {
             quotaTextEl.innerText = `of ${data.quotaMB} MB Limit`;
+        } else if (data.driveLimitMB > 0) {
+            quotaTextEl.innerText = `of ${formatBytes(data.driveLimitMB * 1024 * 1024)} drive limit`;
         } else {
             quotaTextEl.innerText = 'of Unlimited Quota';
         }

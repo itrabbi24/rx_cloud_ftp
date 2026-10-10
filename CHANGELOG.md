@@ -5,6 +5,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.3.4] - 2026-10-10
+
+### Added
+- Search scope: **This folder** (includes sub-folders) or **All folders**. Results show each item's location; clicking one opens its folder.
+- **Total Drive Storage Limit (GB)** in admin settings. Uploads stop once the drive holds that much; the sidebar shows used space against the limit.
+- **Recent** files and folders on the My Drive root.
+- Loading bar under the header while a folder or search loads.
+- Small developer credit under the version in the sidebar.
+
+### Changed
+- Clicking **My Drive** in the sidebar always returns to the drive root.
+- Sidebar footer (storage, date format, version) laid out evenly.
+
+### Fixed
+- An active category filter (e.g. Images) hid every file with only "No files found". The page now says how many files the filter hides, with a **Show all** button.
+
 ## [1.3.3] - 2026-10-05
 
 ### Added
@@ -82,7 +98,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.3...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.4...HEAD
+[1.3.4]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.0...v1.3.1
