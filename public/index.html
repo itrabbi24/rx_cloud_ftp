@@ -58,11 +58,11 @@
     <div id="loginScreen" class="fixed inset-0 bg-gray-50 flex items-center justify-center z-50 p-4">
         <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-xl max-w-md w-full">
             <div class="flex items-center gap-3 mb-6">
-                <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md shadow-blue-200">
+                <div data-brand-logo="w-12 h-12" class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md shadow-blue-200">
                     <i data-lucide="cloud" class="w-7 h-7"></i>
                 </div>
                 <div>
-                    <h2 class="text-xl font-bold text-gray-900 tracking-tight">Rx <span class="text-blue-600">Cloude</span></h2>
+                    <h2 data-brand-name class="text-xl font-bold text-gray-900 tracking-tight">Rx <span class="text-blue-600">Cloude</span></h2>
                     <p class="text-xs text-gray-500">Sign in to your personal cloud server</p>
                 </div>
             </div>
@@ -102,10 +102,10 @@
                 <!-- Logo Brand -->
                 <div class="h-16 flex items-center justify-between px-6 border-b border-gray-100">
                     <div class="flex items-center gap-3">
-                        <div class="bg-blue-600 text-white p-2 rounded-xl flex items-center justify-center shadow-md shadow-blue-200">
+                        <div data-brand-logo="w-10 h-10" class="bg-blue-600 text-white p-2 rounded-xl flex items-center justify-center shadow-md shadow-blue-200">
                             <i data-lucide="cloud" class="w-6 h-6"></i>
                         </div>
-                        <span class="font-bold text-lg tracking-tight text-gray-900">Rx <span class="text-blue-600">Cloude</span></span>
+                        <span data-brand-name class="font-bold text-lg tracking-tight text-gray-900">Rx <span class="text-blue-600">Cloude</span></span>
                     </div>
                     <!-- Close button on Mobile Drawer -->
                     <button onclick="closeMobileSidebar()" class="md:hidden p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 cursor-pointer" title="Close Menu">
@@ -184,11 +184,14 @@
             <!-- was: class="px-5 pb-4 -mt-2 flex items-center justify-between text-[10px] text-gray-400" -->
             <div class="px-1 pt-2 border-t border-gray-100 text-[10px] text-gray-400 leading-relaxed">
                 <div class="flex items-center justify-between">
-                    <span>Rx Cloude <span id="sidebarVersionBadge" class="font-mono text-gray-500">v-</span></span>
+                    <!-- <span>Rx Cloude <span id="sidebarVersionBadge" class="font-mono text-gray-500">v-</span></span> -->
+                    <span><span data-brand-name="plain">Rx Cloude</span> <span id="sidebarVersionBadge" class="font-mono text-gray-500">v-</span></span>
                     <span id="sidebarEngineBadge" class="font-mono text-gray-400">-</span>
                 </div>
                 <!-- Developer credit -->
-                <div class="text-[9.5px] text-gray-400">Developed by <a href="https://github.com/itrabbi24" target="_blank" rel="noopener" class="font-semibold text-gray-500 hover:text-blue-600">ARG RABBI</a></div>
+                <!-- <div class="text-[9.5px] text-gray-400">Developed by <a href="https://github.com/itrabbi24" target="_blank" rel="noopener" class="font-semibold text-gray-500 hover:text-blue-600">ARG RABBI</a></div> -->
+                <!-- Fixed credit: not touched by branding, so the real product name always shows -->
+                <div class="text-[9.5px] text-gray-400">Powered by <a href="https://github.com/itrabbi24/rx_cloud_ftp" target="_blank" rel="noopener" class="font-semibold text-gray-500 hover:text-blue-600">Rx Cloude</a> · Dev <a href="https://github.com/itrabbi24" target="_blank" rel="noopener" class="font-semibold text-gray-500 hover:text-blue-600">ARG RABBI</a></div>
             </div>
             </div>
         </aside>
@@ -206,7 +209,7 @@
                     </button>
                     <!-- Phone app bar title (shown by mobile.css below 768px) -->
                     <div class="hdr-brand hidden items-center gap-2 min-w-0">
-                        <div class="bg-blue-600 text-white p-1.5 rounded-xl shadow-md shadow-blue-200 shrink-0"><i data-lucide="cloud" class="w-5 h-5"></i></div>
+                        <div data-brand-logo="w-8 h-8" class="bg-blue-600 text-white p-1.5 rounded-xl shadow-md shadow-blue-200 shrink-0"><i data-lucide="cloud" class="w-5 h-5"></i></div>
                         <span id="mobileTitle" class="font-bold text-lg tracking-tight text-gray-900 truncate">My Drive</span>
                     </div>
                 </div>
@@ -508,6 +511,51 @@
                                 <div class="text-[10px] text-gray-500 mt-3 pt-2 border-t border-gray-200/60 flex items-center gap-1">
                                     <i data-lucide="info" class="w-3.5 h-3.5 text-emerald-500"></i> <span id="serverEnvBadge">Node runtime unknown</span>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Branding Card (Admin Only): name, browser tab title, logo -->
+                    <div class="mb-6 p-4 sm:p-5 bg-white border border-gray-200/90 rounded-2xl shadow-xs">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                            <div class="flex items-center gap-2.5">
+                                <div class="p-2 bg-violet-50 text-violet-600 rounded-xl">
+                                    <i data-lucide="palette" class="w-4 h-4"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-gray-900 text-sm">Branding</h3>
+                                    <p class="text-xs text-gray-400">Logo, name and page title shown on the login page and across the app</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 self-end sm:self-auto">
+                                <button onclick="resetBrandingText()" class="px-3 py-2 border border-gray-200 hover:bg-gray-50 text-gray-600 text-xs font-semibold rounded-xl cursor-pointer">Reset</button>
+                                <button onclick="saveBranding()" id="btnSaveBranding" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm shadow-blue-200 transition-all cursor-pointer flex items-center gap-1.5">
+                                    <i data-lucide="save" class="w-3.5 h-3.5"></i> Save Branding
+                                </button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="p-3.5 bg-gray-50/70 border border-gray-200/70 rounded-xl">
+                                <label class="text-xs font-semibold text-gray-700 block mb-2">Logo</label>
+                                <div class="flex items-center gap-3">
+                                    <div id="brandLogoPreview" class="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0"><i data-lucide="cloud" class="w-6 h-6"></i></div>
+                                    <div class="flex flex-col gap-1.5">
+                                        <button type="button" onclick="document.getElementById('brandLogoInput').click()" class="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 rounded-lg text-xs font-semibold text-gray-700 cursor-pointer">Upload logo</button>
+                                        <button type="button" id="btnBrandLogoRemove" onclick="removeBrandLogo()" class="hidden text-[11px] font-medium text-red-500 hover:underline cursor-pointer text-left">Remove</button>
+                                    </div>
+                                    <input type="file" id="brandLogoInput" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" onchange="uploadBrandLogo(event)">
+                                </div>
+                                <p class="text-[10px] text-gray-500 mt-2">Square PNG/JPG/WebP, up to 2 MB.</p>
+                            </div>
+                            <div class="p-3.5 bg-gray-50/70 border border-gray-200/70 rounded-xl">
+                                <label for="brandNameInput" class="text-xs font-semibold text-gray-700 block mb-1.5">App name</label>
+                                <input type="text" id="brandNameInput" maxlength="40" placeholder="Rx Cloude" class="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                                <p class="text-[10px] text-gray-500 mt-1.5">The last word is shown in blue. Empty = default.</p>
+                            </div>
+                            <div class="p-3.5 bg-gray-50/70 border border-gray-200/70 rounded-xl">
+                                <label for="brandTitleInput" class="text-xs font-semibold text-gray-700 block mb-1.5">Browser tab title</label>
+                                <input type="text" id="brandTitleInput" maxlength="80" placeholder="Rx Cloude - Modern Cloud Storage" class="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600">
+                                <p class="text-[10px] text-gray-500 mt-1.5">Empty = "&lt;App name&gt; - Cloud Storage".</p>
                             </div>
                         </div>
                     </div>
@@ -1087,8 +1135,19 @@
             </div>
             
             <!-- Modal Body -->
+            <!-- Wrapped so the gallery arrows sit over the preview without being wiped with it -->
+            <div class="relative flex-1 min-h-0 flex">
             <div id="previewContent" class="flex-1 overflow-auto bg-slate-50 flex items-center justify-center p-2 sm:p-4">
                 <!-- Preview elements rendered dynamically -->
+            </div>
+                <!-- Gallery navigation: previous / next file in this folder -->
+                <button id="previewPrev" onclick="previewStep(-1)" class="hidden absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 rounded-full bg-white/90 hover:bg-white border border-gray-200 shadow-md text-gray-700 cursor-pointer" title="Previous (←)" aria-label="Previous file">
+                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                </button>
+                <button id="previewNext" onclick="previewStep(1)" class="hidden absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 rounded-full bg-white/90 hover:bg-white border border-gray-200 shadow-md text-gray-700 cursor-pointer" title="Next (→)" aria-label="Next file">
+                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                </button>
+                <span id="previewCounter" class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-slate-900/70 text-white text-[11px] font-semibold"></span>
             </div>
         </div>
     </div>
@@ -1294,6 +1353,7 @@
     <script src="/dialogs.js"></script>
     <script src="/dates.js"></script>
     <script src="/app.js"></script>
+    <script src="/branding.js"></script>
     <script src="/features.js"></script>
     <script src="/upload.js"></script>
     <script src="/profile.js"></script>

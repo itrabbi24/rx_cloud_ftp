@@ -1192,6 +1192,9 @@ function handleFileSelect(event) {
     event.target.value = '';
     if (files.length > 0) {
         uploadFilesReal(files);
+    } else if (event.target.id === 'folder-input-hidden') {
+        // An empty folder used to do nothing at all, which looked like a bug.
+        rxAlert({ title: 'Empty folder', text: 'The selected folder has no files to upload.', icon: 'info' });
     }
 }
 
@@ -1773,8 +1776,65 @@ function previewFile(name) {
 
     document.getElementById('previewModal').classList.remove('hidden');
     document.getElementById('previewModal').classList.add('flex');
+    updatePreviewNav(name);
     if (window.lucide) lucide.createIcons();
 }
+
+// --- Gallery: step through the folder's previewable files ----------------
+const GALLERY_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'mp4', 'webm', 'mov', 'mkv', 'avi', 'pdf'];
+function galleryFiles() {
+    // Same order and filters as the file list on screen.
+    return filesList.filter(f => !f.isDirectory
+        && f.name.toLowerCase().includes(searchQuery)
+        && matchCategory(f.name, selectedCategory)
+        && GALLERY_EXTS.includes((f.name.split('.').pop() || '').toLowerCase()));
+}
+function updatePreviewNav(name) {
+    const list = galleryFiles();
+    const idx = list.findIndex(f => f.name === name);
+    const show = idx !== -1 && list.length > 1;
+    ['previewPrev', 'previewNext', 'previewCounter'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', !show);
+    });
+    if (!show) return;
+    document.getElementById('previewCounter').innerText = `${idx + 1} / ${list.length}`;
+    // Warm the next image so stepping feels instant.
+    const next = list[(idx + 1) % list.length];
+    if (/.(jpe?g|png|gif|webp|bmp|svg)$/i.test(next.name)) {
+        const p = currentPath === '/' ? '/' + next.name : currentPath + '/' + next.name;
+        new Image().src = `/api/files/download?path=${encodeURIComponent(p)}&preview=true&token=${authToken}`;
+    }
+}
+function previewStep(dir) {
+    const list = galleryFiles();
+    if (list.length < 2) return;
+    const idx = list.findIndex(f => f.name === currentPreviewFile);
+    const next = list[(idx + dir + list.length) % list.length]; // wraps around
+    previewFile(next.name);
+}
+function previewIsOpen() {
+    const m = document.getElementById('previewModal');
+    return m && !m.classList.contains('hidden');
+}
+document.addEventListener('keydown', (e) => {
+    if (!previewIsOpen() || e.target.closest('input, textarea, select, [contenteditable]')) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); previewStep(1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); previewStep(-1); }
+});
+// Swipe left/right on phones.
+(function setupPreviewSwipe() {
+    const area = document.getElementById('previewContent');
+    if (!area) return;
+    let x0 = null, y0 = null;
+    area.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+    area.addEventListener('touchend', e => {
+        if (x0 === null) return;
+        const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+        x0 = null;
+        if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) previewStep(dx < 0 ? 1 : -1);
+    }, { passive: true });
+})();
 
 function closePreviewModal() {
     document.getElementById('previewModal').classList.remove('flex');

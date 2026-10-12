@@ -5,6 +5,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.3.5] - 2026-10-12
+
+### Added
+- **Branding** (Users & Access, admin only): upload a logo and set the app name and browser tab title. They apply on the login page, sidebar, phone header, tab icon and share page.
+- Gallery navigation in the preview: previous/next arrows, a "3 / 14" counter, keyboard arrow keys and swipe on phones. It steps through the folder's images, videos and PDFs.
+- A fixed "Powered by Rx Cloude" credit in the sidebar that branding does not change.
+
+### Fixed
+- Uploads could stop working until a page reload if an earlier upload failed partway; the "upload in progress" lock is now always released, and errors are shown in a dialog instead of a small toast.
+- Choosing an empty folder with **Select Folder** did nothing; it now says the folder is empty.
+
 ## [1.3.4] - 2026-10-10
 
 ### Added
@@ -98,7 +109,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.4...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.5...HEAD
+[1.3.5]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.1...v1.3.2

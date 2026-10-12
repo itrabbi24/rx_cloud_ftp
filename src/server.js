@@ -622,6 +622,77 @@ function createServerApp() {
     res.sendFile(found.file, { dotfiles: 'allow' });
   });
 
+  // --- API: BRANDING (name, page title, logo set by the admin) ---
+  // Public read: the login page shows the brand before anyone signs in.
+  const BRAND_DIR = path.join(require('./db').DATA_DIR, 'branding');
+  function brandLogoFile() {
+    for (const ext of Object.keys(AVATAR_TYPES)) {
+      const file = path.join(BRAND_DIR, `logo.${ext}`);
+      if (fs.existsSync(file)) return { file, ext };
+    }
+    return null;
+  }
+  function publicBranding(cfg) {
+    const b = cfg.branding || {};
+    return { name: b.name || '', title: b.title || '', logoVersion: brandLogoFile() ? (b.logoVersion || 1) : 0 };
+  }
+  function requireAdmin(req, res) {
+    if (req.user.role !== 'admin') { res.status(403).json({ error: 'Admin permission required' }); return false; }
+    return true;
+  }
+
+  currentApp.get('/api/branding', (req, res) => {
+    res.json(publicBranding(getConfig()));
+  });
+
+  currentApp.get('/api/branding/logo', (req, res) => {
+    const found = brandLogoFile();
+    if (!found) return res.status(404).json({ error: 'No logo' });
+    res.setHeader('Content-Type', AVATAR_TYPES[found.ext]);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.sendFile(found.file, { dotfiles: 'allow' });
+  });
+
+  currentApp.put('/api/branding', authenticateToken, (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const clean = v => String(v === undefined || v === null ? '' : v).replace(/[\u0000-\u001f<>]/g, '').trim();
+    const cfg = getConfig();
+    const name = clean(req.body && req.body.name).slice(0, 40);
+    const title = clean(req.body && req.body.title).slice(0, 80);
+    cfg.branding = { ...(cfg.branding || {}), name, title };
+    saveConfig(cfg);
+    broadcastLog('info', `Admin updated branding: name "${name || 'default'}", title "${title || 'default'}"`);
+    res.json({ success: true, branding: publicBranding(cfg) });
+  });
+
+  currentApp.post('/api/branding/logo', authenticateToken, (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    avatarUpload.single('logo')(req, res, (err) => {
+      if (err) {
+        return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({
+          error: err.code === 'LIMIT_FILE_SIZE' ? 'Logo is too large (max 2 MB)' : err.message
+        });
+      }
+      const ext = sniffImageType(req.file && req.file.buffer);
+      if (!ext) return res.status(400).json({ error: 'Please choose a JPG, PNG, WebP or GIF image' });
+      fs.mkdirSync(BRAND_DIR, { recursive: true });
+      for (const e of Object.keys(AVATAR_TYPES)) { try { fs.rmSync(path.join(BRAND_DIR, `logo.${e}`), { force: true }); } catch (x) {} }
+      fs.writeFileSync(path.join(BRAND_DIR, `logo.${ext}`), req.file.buffer);
+      const cfg = getConfig();
+      cfg.branding = { ...(cfg.branding || {}), logoVersion: Date.now() };
+      saveConfig(cfg);
+      broadcastLog('info', 'Admin changed the logo');
+      res.json({ success: true, branding: publicBranding(cfg) });
+    });
+  });
+
+  currentApp.delete('/api/branding/logo', authenticateToken, (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    for (const e of Object.keys(AVATAR_TYPES)) { try { fs.rmSync(path.join(BRAND_DIR, `logo.${e}`), { force: true }); } catch (x) {} }
+    res.json({ success: true, branding: publicBranding(getConfig()) });
+  });
+
   // Current user's own record (fresh avatarVersion, role, etc.).
   currentApp.get('/api/auth/me', authenticateToken, (req, res) => {
     res.json({ user: publicUser(req.user) });

@@ -207,6 +207,32 @@ uploadFilesReal = async function (fileList, extraDirs) {
     if (currentPath === targetPath) loadDirectory(currentPath);
 };
 
+// An exception mid-upload used to leave uploadInProgress stuck at true, after
+// which every upload (e.g. Select Folder) was refused with only a small toast.
+// Always release the flag, and say clearly what went wrong.
+const uploadFilesCore = uploadFilesReal;
+uploadFilesReal = async function (fileList, extraDirs) {
+    if (uploadInProgress) {
+        rxAlert({ title: 'Upload already running', text: 'Please wait for the current upload to finish, then try again.', icon: 'info' });
+        return;
+    }
+    const count = fileList ? fileList.length : 0;
+    if (!count && !(extraDirs && extraDirs.length)) {
+        rxAlert({ title: 'Nothing to upload', text: 'The selected folder has no files the browser could read.', icon: 'warning' });
+        return;
+    }
+    try {
+        await uploadFilesCore(fileList, extraDirs);
+    } catch (err) {
+        console.error('Upload failed', err);
+        rxAlert({ title: 'Upload failed', text: (err && err.message) || 'Unexpected error during upload', icon: 'error' });
+    } finally {
+        uploadInProgress = false;
+        const pc = document.getElementById('upload-progress-container');
+        if (pc) pc.classList.add('hidden');
+    }
+};
+
 // --- Drop handling --------------------------------------------------------
 async function handleUploadDrop(e) {
     e.preventDefault();
