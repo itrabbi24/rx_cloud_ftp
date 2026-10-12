@@ -5,6 +5,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.3.7] - 2026-10-12
+
+### Removed
+- Unused files moved to `archive/` (not packed into the build): `public/app_icon.jpg`, its copy `assets/app_icon.jpg`, and the old `public/launcher.html`. The `.exe` web bundle is about 1 MB smaller.
+
 ## [1.3.6] - 2026-10-12
 
 ### Changed
@@ -124,7 +129,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.6...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.7...HEAD
+[1.3.7]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.6...v1.3.7
 [1.3.6]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.5...v1.3.6
 [1.3.5]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.3...v1.3.4

@@ -8,6 +8,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const sources = [
   // launcher.html now lives in public/ and is picked up by the walk below.
+  // (Later retired to archive/launcher.html: unused since the C# launcher.)
 ];
 
 function walk(dir, rel) {
