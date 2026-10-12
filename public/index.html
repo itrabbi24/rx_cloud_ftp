@@ -58,13 +58,16 @@
          The previous single-card login is kept commented out below. -->
     <div id="loginScreen" class="fixed inset-0 z-50 flex bg-white overflow-y-auto">
         <!-- Left: brand panel with illustration (hidden on phones) -->
-        <div class="login-hero hidden lg:flex lg:w-[52%] relative overflow-hidden flex-col justify-between p-10 xl:p-14 text-white">
+        <!-- was: justify-between with the logo at the top-left -->
+        <div class="login-hero hidden lg:flex lg:w-[52%] relative overflow-hidden flex-col justify-center gap-6 p-10 xl:p-14 text-white">
+            <!-- Logo moved to the sign-in card on the right (looked better there).
             <div class="flex items-center gap-3 relative z-10">
                 <div data-brand-logo="w-11 h-11" class="bg-white/15 backdrop-blur text-white p-2 rounded-xl ring-1 ring-white/25">
                     <i data-lucide="cloud" class="w-7 h-7"></i>
                 </div>
                 <span data-brand-name="plain" class="text-xl font-bold tracking-tight">Rx Cloud</span>
             </div>
+            -->
 
             <!-- Vector illustration: cloud with synced files, shield and devices -->
             <div class="relative z-10 flex justify-center my-6">
@@ -135,19 +138,20 @@
         </div>
 
         <!-- Right: sign-in form -->
-        <div class="flex-1 flex flex-col min-h-full">
-            <div class="flex-1 flex items-center justify-center px-6 py-10 sm:px-10">
-                <div class="w-full max-w-sm">
-                    <!-- Brand (phones / tablets only; the hero panel shows it on desktop) -->
-                    <div class="flex items-center gap-3 mb-8 lg:hidden">
-                        <div data-brand-logo="w-12 h-12" class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md shadow-blue-200">
-                            <i data-lucide="cloud" class="w-7 h-7"></i>
+        <div class="flex-1 flex flex-col min-h-full bg-slate-50">
+            <div class="flex-1 flex items-center justify-center px-4 py-10 sm:px-10">
+                <!-- Sign-in card: logo, welcome text, fields, button (was a plain max-w-sm column) -->
+                <div class="w-full max-w-md bg-white rounded-3xl border border-gray-100 shadow-xl shadow-slate-200/70 px-6 py-9 sm:px-10 sm:py-11">
+                    <!-- Brand: centred at the top of the card on every screen size -->
+                    <div class="flex flex-col items-center gap-2.5 mb-6">
+                        <div data-brand-logo="w-14 h-14" class="bg-blue-600 text-white p-3 rounded-2xl shadow-lg shadow-blue-200">
+                            <i data-lucide="cloud" class="w-8 h-8"></i>
                         </div>
-                        <h2 data-brand-name class="text-xl font-bold text-gray-900 tracking-tight">Rx <span class="text-blue-600">Cloud</span></h2>
+                        <span data-brand-name class="text-lg font-bold text-gray-900 tracking-tight">Rx <span class="text-blue-600">Cloud</span></span>
                     </div>
 
-                    <h2 class="text-2xl font-bold text-gray-900 tracking-tight">Welcome back</h2>
-                    <p class="text-sm text-gray-500 mt-1 mb-8">Sign in to continue to your drive.</p>
+                    <h2 class="text-2xl font-bold text-gray-900 tracking-tight text-center">Welcome back</h2>
+                    <p class="text-sm text-gray-500 mt-1 mb-8 text-center">Sign in to continue to your drive.</p>
 
                     <form id="loginForm" class="space-y-5" action="#" method="post">
                         <div>

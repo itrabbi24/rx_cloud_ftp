@@ -9,7 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 - Product name spelling fixed to **Rx Cloud** across the app, launcher, share page and README. File names (`RxCloude.exe`) stay the same so self-update keeps working.
-- New login page: split layout with a vector illustration, icons in the fields, a show/hide password button and a cleaner sign-in button. On phones it shows just the form.
+- New login page: a vector illustration on the left and a sign-in card on the right with the logo and name centred above "Welcome back", icons in the fields, a show/hide password button and a cleaner sign-in button. On phones it shows just the card.
 - **Date format** is now an admin setting in Users & Access and applies to every user (it was a per-browser sidebar option).
 
 ### Added
