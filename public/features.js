@@ -1,5 +1,5 @@
 // =====================================================================
-// Rx Cloude - Extended Features
+// Rx Cloud - Extended Features
 // ZIP Manager • Secure Vault • Starred & Color Tags • Smart Cleaner • PWA
 // Loaded after app.js; overrides a few app.js globals where needed.
 // =====================================================================
@@ -697,7 +697,7 @@ window.addEventListener('appinstalled', () => {
     deferredPwaPrompt = null;
     const btn = document.getElementById('pwaInstallBtn');
     if (btn) { btn.classList.add('hidden'); btn.classList.remove('flex'); }
-    showToast('📱 Rx Cloude installed as an app!');
+    showToast('📱 Rx Cloud installed as an app!');
 });
 
 async function installPwaApp() {

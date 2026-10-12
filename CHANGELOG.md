@@ -5,6 +5,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.3.6] - 2026-10-12
+
+### Changed
+- Product name spelling fixed to **Rx Cloud** across the app, launcher, share page and README. File names (`RxCloude.exe`) stay the same so self-update keeps working.
+- New login page: split layout with a vector illustration, icons in the fields, a show/hide password button and a cleaner sign-in button. On phones it shows just the form.
+- **Date format** is now an admin setting in Users & Access and applies to every user (it was a per-browser sidebar option).
+
+### Added
+- Users & Access: change a user's **role** (User/Admin) from the table, and **enable/disable** accounts with a switch. Disabled users are signed out at once and cannot log in; their files are kept.
+
+### Fixed
+- The last active admin could still be disabled (the safety check ran before the change). Admins also cannot disable or demote their own account.
+- The **Starred** filter pill jumped to two lines when selected.
+- The loading-bar animation never ran: its CSS was in `style.css`, which no page loads. Moved to `mobile.css`.
+
 ## [1.3.5] - 2026-10-12
 
 ### Added
@@ -109,7 +124,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.5...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.6...HEAD
+[1.3.6]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.5...v1.3.6
 [1.3.5]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.2...v1.3.3

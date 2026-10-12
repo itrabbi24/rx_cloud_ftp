@@ -1,5 +1,5 @@
 // =====================================================================
-// Rx Cloude - My Profile: profile picture (upload / remove) + avatar UI.
+// Rx Cloud - My Profile: profile picture (upload / remove) + avatar UI.
 // Loaded after app.js.
 // =====================================================================
 

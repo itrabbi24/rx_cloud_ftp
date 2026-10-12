@@ -716,9 +716,9 @@ function setFilterCategory(category) {
     selectedCategory = category;
     document.querySelectorAll('.cat-pill').forEach(btn => {
         if (btn.getAttribute('data-cat') === category) {
-            btn.className = "cat-pill px-3 py-1.5 rounded-full font-semibold transition-colors cursor-pointer bg-blue-50 text-blue-600 shrink-0";
+            btn.className = "cat-pill px-3 py-1.5 rounded-full font-semibold transition-colors cursor-pointer bg-blue-50 text-blue-600 shrink-0 inline-flex items-center gap-1 whitespace-nowrap"; // keeps the Starred icon beside its label
         } else {
-            btn.className = "cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100 shrink-0";
+            btn.className = "cat-pill px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer text-gray-500 hover:bg-gray-100 shrink-0 inline-flex items-center gap-1 whitespace-nowrap";
         }
     });
     renderFiles();
@@ -1847,7 +1847,7 @@ function closePreviewModal() {
 // User Management (Admin)
 async function loadUsersTable() {
     const tbody = document.getElementById('users-table-body');
-    tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-xs text-gray-400">Loading users...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-xs text-gray-400">Loading users...</td></tr>`;
 
     try {
         const res = await apiFetch('/api/users');
@@ -1857,7 +1857,8 @@ async function loadUsersTable() {
         tbody.innerHTML = '';
         users.forEach(u => {
             const tr = document.createElement('tr');
-            tr.className = "hover:bg-gray-50/50 transition-colors";
+            // tr.className = "hover:bg-gray-50/50 transition-colors";
+            tr.className = "hover:bg-gray-50/50 transition-colors" + (u.status === 'inactive' ? ' opacity-60' : '');
             tr.innerHTML = `
                 <td class="py-3.5 px-6 font-medium text-gray-900 flex items-center gap-3">
                     <!-- <div class="w-8 h-8 rounded-full bg-blue-100 ...">${u.username.charAt(0).toUpperCase()}</div>  (now shows the profile picture) -->
@@ -1867,9 +1868,11 @@ async function loadUsersTable() {
                         <div class="text-[10px] text-gray-400">Created: ${u.createdAt ? rxDate(u.createdAt) : 'Initial'}</div>
                     </div>
                 </td>
-                <td class="py-3.5 px-6"><span class="px-2.5 py-1 text-xs font-semibold rounded-md ${u.role === 'admin' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-gray-100 text-gray-600'}">${u.role.toUpperCase()}</span></td>
+                <td class="py-3.5 px-6">${userRoleCell(u)}</td>
+                <!-- old read-only role badge: <td><span class="px-2.5 py-1 text-xs font-semibold rounded-md ${u.role === 'admin' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-gray-100 text-gray-600'}">${u.role.toUpperCase()}</span></td> -->
                 <td class="py-3.5 px-6 text-xs text-gray-600 font-mono"><code>${u.folderScope ? '/' + u.folderScope : 'Entire Drive (/)'}</code></td>
                 <td class="py-3.5 px-6 text-xs font-semibold ${u.quotaMB > 0 ? 'text-gray-700' : 'text-emerald-600'}">${u.quotaMB > 0 ? u.quotaMB + ' MB' : 'Unlimited'}</td>
+                <td class="py-3.5 px-6">${userStatusCell(u)}</td>
                 <td class="py-3.5 px-6 text-right">
                     ${u.username !== 'admin' ? `<button onclick="deleteUser(${jsArg(u.id)})" class="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer">Delete</button>` : '<span class="text-xs text-gray-400 italic">Default Admin</span>'}
                 </td>
@@ -1877,8 +1880,84 @@ async function loadUsersTable() {
             tbody.appendChild(tr);
         });
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-xs text-red-500">${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-xs text-red-500">${escHtml(err.message)}</td></tr>`;
     }
+}
+
+// --- Role and enable/disable controls in the users table -----------------
+function isSelfUser(u) {
+    return currentUser && currentUser.id === u.id;
+}
+function userRoleCell(u) {
+    // Your own role is shown read-only so you cannot demote yourself by accident.
+    if (isSelfUser(u)) {
+        return `<span class="px-2.5 py-1 text-xs font-semibold rounded-md bg-blue-50 text-blue-700 border border-blue-200">${escHtml(u.role.toUpperCase())}</span> <span class="text-[10px] text-gray-400">(you)</span>`;
+    }
+    return `<select onchange="changeUserRole(${jsArg(u.id)}, ${jsArg(u.username)}, this)" data-prev="${escHtml(u.role)}" aria-label="Role for ${escHtml(u.username)}"
+        class="px-2 py-1 text-xs font-semibold rounded-md border cursor-pointer focus:outline-none ${u.role === 'admin' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-50 text-gray-700 border-gray-200'}">
+        <option value="user" ${u.role !== 'admin' ? 'selected' : ''}>User</option>
+        <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+    </select>`;
+}
+function userStatusCell(u) {
+    const active = u.status !== 'inactive';
+    const label = active ? 'Active' : 'Disabled';
+    if (isSelfUser(u)) return `<span class="text-xs font-semibold text-emerald-600">${label}</span>`;
+    return `<button type="button" role="switch" aria-checked="${active}" onclick="toggleUserStatus(${jsArg(u.id)}, ${jsArg(u.username)}, ${active})"
+        class="inline-flex items-center gap-2 cursor-pointer group" title="${active ? 'Click to disable this account' : 'Click to enable this account'}">
+        <span class="relative inline-block w-9 h-5 rounded-full transition-colors ${active ? 'bg-emerald-500' : 'bg-gray-300'}">
+            <span class="absolute top-0.5 ${active ? 'left-[18px]' : 'left-0.5'} w-4 h-4 bg-white rounded-full shadow transition-all"></span>
+        </span>
+        <span class="text-xs font-semibold ${active ? 'text-emerald-600' : 'text-gray-500'}">${label}</span>
+    </button>`;
+}
+async function updateUserFields(id, fields) {
+    const res = await apiFetch(`/api/users/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not update user');
+    return data.user;
+}
+async function changeUserRole(id, username, select) {
+    const role = select.value;
+    const prev = select.dataset.prev;
+    const ok = await rxConfirm({
+        title: 'Change role?',
+        text: role === 'admin'
+            ? `"${username}" will become an Admin with full access to every folder and all settings.`
+            : `"${username}" will become a normal User and lose admin access.`,
+        confirmText: 'Change role'
+    });
+    if (!ok) { select.value = prev; return; }
+    try {
+        await updateUserFields(id, { role });
+        showToast(`${username} is now ${role === 'admin' ? 'an Admin' : 'a User'}`);
+    } catch (err) {
+        select.value = prev;
+        showToast(err.message);
+    }
+    loadUsersTable();
+}
+async function toggleUserStatus(id, username, isActive) {
+    if (isActive) {
+        const ok = await rxConfirm({
+            title: 'Disable account?',
+            text: `"${username}" will be signed out and cannot log in until enabled again. Their files are kept.`,
+            confirmText: 'Disable', danger: true,
+            icon: 'warning'
+        });
+        if (!ok) return;
+    }
+    try {
+        await updateUserFields(id, { status: isActive ? 'inactive' : 'active' });
+        showToast(`${username} ${isActive ? 'disabled' : 'enabled'}`);
+    } catch (err) {
+        showToast(err.message);
+    }
+    loadUsersTable();
 }
 
 // ==========================================
@@ -1939,8 +2018,8 @@ function showUpdateBanner(info) {
     bar.innerHTML = `
         <i data-lucide="sparkles" class="w-5 h-5 text-amber-500 shrink-0"></i>
         <div class="flex-1 min-w-0">
-            <b>Rx Cloude v${escHtml(info.latest)} is available.</b>
-            <span class="block sm:inline text-amber-800/80">On the server, click <b>Update</b> in the Rx Cloude launcher to install it.</span>
+            <b>Rx Cloud v${escHtml(info.latest)} is available.</b>
+            <span class="block sm:inline text-amber-800/80">On the server, click <b>Update</b> in the Rx Cloud launcher to install it.</span>
         </div>
         ${info.releaseUrl ? `<a href="${escHtml(info.releaseUrl)}" target="_blank" rel="noopener" class="shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl text-xs">What's new</a>` : ''}
         <button class="shrink-0 p-1 text-amber-700/70 hover:text-amber-900 cursor-pointer" aria-label="Dismiss update notice"><i data-lucide="x" class="w-4 h-4"></i></button>`;
@@ -1987,6 +2066,7 @@ async function fetchServerConfig() {
         if (regCheckbox) regCheckbox.checked = !!data.allowRegistration;
 
         setDriveLimitUi(data.driveLimitGB);
+        if (typeof applyServerDateFormat === 'function') applyServerDateFormat(data.dateFormat);
 
         const sessionInput = document.getElementById('settingSessionDays');
         if (sessionInput && data.sessionDays) sessionInput.value = data.sessionDays;
@@ -2006,6 +2086,8 @@ function setDriveLimitUi(gb) {
 }
 
 async function saveGlobalServerConfig() {
+    const dateFormatSelect = document.getElementById('settingDateFormat');
+    const dateFormat = dateFormatSelect ? dateFormatSelect.value : undefined;
     const driveLimitInput = document.getElementById('settingDriveLimitGB');
     const driveLimitGB = Math.max(0, Number(driveLimitInput && driveLimitInput.value) || 0);
     const input = document.getElementById('settingMaxUploadMB');
@@ -2025,7 +2107,8 @@ async function saveGlobalServerConfig() {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             // body: JSON.stringify({ maxUploadMB, allowRegistration, sessionDays })
-            body: JSON.stringify({ maxUploadMB, allowRegistration, sessionDays, driveLimitGB })
+            // body: JSON.stringify({ maxUploadMB, allowRegistration, sessionDays, driveLimitGB })
+            body: JSON.stringify({ maxUploadMB, allowRegistration, sessionDays, driveLimitGB, dateFormat })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to save settings');
@@ -2050,6 +2133,7 @@ async function saveGlobalServerConfig() {
 
         applyUploadLimitUi(appliedMB);
         setDriveLimitUi(saved.driveLimitGB !== undefined ? saved.driveLimitGB : driveLimitGB);
+        if (typeof applyServerDateFormat === 'function') applyServerDateFormat(saved.dateFormat || dateFormat);
         loadDirectory(currentPath); // refresh the sidebar storage bar
 
         showToast(`Server settings saved! Upload limit: ${appliedMB > 0 ? appliedMB + ' MB' : 'Unlimited'}, session: ${appliedDays} days`);

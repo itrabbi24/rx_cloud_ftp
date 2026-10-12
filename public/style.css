@@ -796,6 +796,27 @@ body {
   transition: width 0.1s linear;
 }
 
-/* Indeterminate top progress bar (folder loading / search) */
+/* NOTE: the rules below are NOT loaded (index.html does not link style.css).
+   They were moved to mobile.css; kept here commented for reference.
+/* Indeterminate top progress bar (folder loading / search) *_/
 #top-progress .top-progress-bar { animation: rx-progress 1.1s ease-in-out infinite; }
 @keyframes rx-progress { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+
+/* Login hero panel (v1.3.6) *_/
+.login-hero {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255,255,255,.16) 0, transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(56,189,248,.35) 0, transparent 45%),
+    linear-gradient(135deg, #1d4ed8 0%, #2563eb 45%, #4f46e5 100%);
+}
+.login-hero::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,.12) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to bottom, #000, transparent 85%);
+}
+.login-float-a { animation: login-float 6s ease-in-out infinite; }
+.login-float-b { animation: login-float 7s ease-in-out infinite reverse; }
+@keyframes login-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@media (prefers-reduced-motion: reduce) { .login-float-a, .login-float-b { animation: none; } }
+*/

@@ -1,7 +1,8 @@
 // =====================================================================
-// Rx Cloude - date display (relative "2 hours ago" or a fixed format)
-// The chosen format is a per-browser preference (localStorage). Hovering a
-// date always shows the full date and time.
+// Rx Cloud - date display (relative "2 hours ago" or a fixed format)
+// The format is set by the admin (Users & Access) and applies to everyone;
+// it used to be a per-browser sidebar preference. Hovering a date always
+// shows the full date and time.
 // =====================================================================
 
 const DATE_FORMATS = {
@@ -11,13 +12,26 @@ const DATE_FORMATS = {
     numeric: 'Numeric (05/10/2026)'
 };
 
+// function getDateFormat() {
+//     try {
+//         const v = localStorage.getItem('rx_date_format');
+//         if (v && DATE_FORMATS[v]) return v;
+//     } catch (e) {}
+//     return 'relative';
+// }
+let serverDateFormat = 'relative';
 function getDateFormat() {
-    try {
-        const v = localStorage.getItem('rx_date_format');
-        if (v && DATE_FORMATS[v]) return v;
-    } catch (e) {}
-    return 'relative';
+    return DATE_FORMATS[serverDateFormat] ? serverDateFormat : 'relative';
 }
+// Called with the value from /api/config (public, so it works before login).
+function applyServerDateFormat(format) {
+    if (!DATE_FORMATS[format] || format === serverDateFormat) return;
+    serverDateFormat = format;
+    refreshDates();
+    const select = document.getElementById('settingDateFormat');
+    if (select) select.value = format;
+}
+fetch('/api/config').then(r => r.ok ? r.json() : null).then(c => { if (c) applyServerDateFormat(c.dateFormat); }).catch(() => {});
 
 function relativeTime(date) {
     const seconds = Math.round((Date.now() - date.getTime()) / 1000);
@@ -68,18 +82,21 @@ function refreshDates() {
     });
 }
 
-function setDateFormat(format) {
-    if (!DATE_FORMATS[format]) return;
-    try { localStorage.setItem('rx_date_format', format); } catch (e) {}
-    refreshDates();
-}
+// function setDateFormat(format) {
+//     if (!DATE_FORMATS[format]) return;
+//     try { localStorage.setItem('rx_date_format', format); } catch (e) {}
+//     refreshDates();
+// }
 
 setInterval(() => { if (getDateFormat() === 'relative') refreshDates(); }, 60 * 1000);
 
+// document.addEventListener('DOMContentLoaded', () => {
+//     const select = document.getElementById('dateFormatSelect');
+//     ... (sidebar picker, moved to the admin settings card)
+// });
 document.addEventListener('DOMContentLoaded', () => {
-    const select = document.getElementById('dateFormatSelect');
+    const select = document.getElementById('settingDateFormat');
     if (!select) return;
     select.innerHTML = Object.entries(DATE_FORMATS).map(([k, label]) => `<option value="${k}">${label}</option>`).join('');
     select.value = getDateFormat();
-    select.addEventListener('change', () => setDateFormat(select.value));
 });

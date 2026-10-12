@@ -1,5 +1,5 @@
 // =====================================================================
-// Rx Cloude - phone app shell glue (bottom tab bar, sheets, title)
+// Rx Cloud - phone app shell glue (bottom tab bar, sheets, title)
 // Loaded after app.js and features.js.
 // =====================================================================
 
@@ -15,7 +15,7 @@ function setMobileActive(tab) {
         btn.classList.toggle('active', btn.getAttribute('data-mtab') === tab);
     });
     const title = document.getElementById('mobileTitle');
-    if (title) title.innerText = MOBILE_TITLES[tab] || 'Rx Cloude';
+    if (title) title.innerText = MOBILE_TITLES[tab] || 'Rx Cloud';
 }
 
 function mobileNav(tab) {

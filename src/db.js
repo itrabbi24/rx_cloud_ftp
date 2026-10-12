@@ -78,6 +78,10 @@ function applyConfigUpdate(config, body) {
   if (src.driveLimitGB !== undefined) {
     next.driveLimitGB = Math.max(0, Math.round((Number(src.driveLimitGB) || 0) * 100) / 100);
   }
+  // Date display for everyone, chosen by the admin.
+  if (src.dateFormat !== undefined && ['relative', 'short', 'full', 'numeric'].includes(src.dateFormat)) {
+    next.dateFormat = src.dateFormat;
+  }
   if (src.allowRegistration !== undefined) {
     next.allowRegistration = !!src.allowRegistration;
   }
@@ -209,7 +213,7 @@ function getUsers() {
   try {
     ensureStorage();
     fs.writeFileSync(FIRST_LOGIN_FILE, [
-      'Rx Cloude - first login',
+      'Rx Cloud - first login',
       '',
       'Username: admin',
       `Password: ${initialAdminPassword}`,

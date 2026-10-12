@@ -1,5 +1,5 @@
 // =====================================================================
-// Rx Cloude - styled confirm / alert dialogs (SweetAlert2, bundled locally
+// Rx Cloud - styled confirm / alert dialogs (SweetAlert2, bundled locally
 // in /vendor so it also works on LAN servers without internet access).
 // Falls back to the browser's native dialogs if the library is missing.
 // =====================================================================

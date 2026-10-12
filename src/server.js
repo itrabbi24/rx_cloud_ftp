@@ -69,7 +69,7 @@ function checkLatestRelease() {
         if (!version) return;
         latestRelease = { version, url: data.html_url || `https://github.com/${UPDATE_REPO}/releases/latest` };
         if (compareVersions(version, APP_VERSION) > 0) {
-          broadcastLog('info', `Update available: Rx Cloude v${version} (running v${APP_VERSION}). Use the Update button in the launcher.`);
+          broadcastLog('info', `Update available: Rx Cloud v${version} (running v${APP_VERSION}). Use the Update button in the launcher.`);
         }
       } catch (e) {}
     });
@@ -472,6 +472,10 @@ function createServerApp() {
       if (!user) {
         return res.status(403).json({ error: 'User not found' });
       }
+      // A disabled account is signed out at once, not only when its token expires.
+      if (user.status === 'inactive') {
+        return res.status(401).json({ error: 'This account has been disabled by an administrator' });
+      }
       req.user = user;
       if (user.mustChangePassword && req.path !== '/api/auth/change-password') {
         return res.status(428).json({ error: 'Password change required', mustChangePassword: true });
@@ -707,15 +711,16 @@ function createServerApp() {
       version: APP_VERSION,
       maxUploadMB: cfg.maxUploadMB !== undefined ? cfg.maxUploadMB : 1024,
       allowRegistration: !!cfg.allowRegistration,
-      driveLimitGB: Number(cfg.driveLimitGB) || 0
+      driveLimitGB: Number(cfg.driveLimitGB) || 0,
+      dateFormat: cfg.dateFormat || 'relative'
     });
   });
 
   // Build/version information so clients can detect what they are talking to.
   currentApp.get('/api/version', (req, res) => {
-    // res.json({ name: 'Rx Cloude', version: APP_VERSION, node: process.version });
+    // res.json({ name: 'Rx Cloud', version: APP_VERSION, node: process.version });
     res.json({
-      name: 'Rx Cloude',
+      name: 'Rx Cloud',
       version: APP_VERSION,
       node: process.version,
       // Newest GitHub release (null when unknown or offline); the web UI
@@ -731,8 +736,10 @@ function createServerApp() {
     }
     // const { maxUploadMB, allowRegistration, sessionDays } = req.body;
     // const cfg = applyConfigUpdate(getConfig(), { maxUploadMB, allowRegistration, sessionDays });
-    const { maxUploadMB, allowRegistration, sessionDays, driveLimitGB } = req.body;
-    const cfg = applyConfigUpdate(getConfig(), { maxUploadMB, allowRegistration, sessionDays, driveLimitGB });
+    // const { maxUploadMB, allowRegistration, sessionDays, driveLimitGB } = req.body;
+    // const cfg = applyConfigUpdate(getConfig(), { maxUploadMB, allowRegistration, sessionDays, driveLimitGB });
+    const { maxUploadMB, allowRegistration, sessionDays, driveLimitGB, dateFormat } = req.body;
+    const cfg = applyConfigUpdate(getConfig(), { maxUploadMB, allowRegistration, sessionDays, driveLimitGB, dateFormat });
     driveUsageBytes(cfg, true);
 
     saveConfig(cfg);
@@ -742,6 +749,7 @@ function createServerApp() {
       config: {
         maxUploadMB: cfg.maxUploadMB,
         driveLimitGB: Number(cfg.driveLimitGB) || 0,
+        dateFormat: cfg.dateFormat || 'relative',
         allowRegistration: cfg.allowRegistration,
         sessionDays: getSessionDays(cfg),
         port: cfg.port,
@@ -912,13 +920,20 @@ function createServerApp() {
       if (cleanScope === null) return res.status(400).json({ error: 'Invalid folder scope path' });
       users[index].folderScope = cleanScope;
     }
+    // An admin cannot disable or demote their own account (would lock themselves out mid-session).
+    if (users[index].id === req.user.id && ((status && status !== 'active') || (role && role !== 'admin'))) {
+      return res.status(400).json({ error: 'You cannot disable or demote your own account' });
+    }
+    // The status must be applied BEFORE the check below; it used to run after,
+    // so the last active admin could still be disabled.
+    if (status && ['active', 'inactive'].includes(status)) users[index].status = status;
     // Never lock the server out: the last active admin cannot be demoted or disabled.
     const activeAdmins = users.filter(u => u.role === 'admin' && u.status !== 'inactive');
     if (activeAdmins.length === 0) {
       return res.status(400).json({ error: 'At least one active administrator is required' });
     }
     if (Array.isArray(folderPermissions)) users[index].folderPermissions = folderPermissions;
-    if (status && ['active', 'inactive'].includes(status)) users[index].status = status;
+    // if (status && ['active', 'inactive'].includes(status)) users[index].status = status;  (moved above the admin check)
     if (quotaMB !== undefined) users[index].quotaMB = Number(quotaMB);
 
     saveUsers(users);
@@ -2452,7 +2467,7 @@ function getCertExpiry(certPem) {
 
 // Load the HTTPS certificate, regenerating it when it is missing, unreadable,
 // about to expire, or lacking the hostnames this machine actually answers on.
-// The old certificate only carried the SAN "DNS:Rx Cloude LAN", so no browser
+// The old certificate only carried the SAN "DNS:Rx Cloud LAN", so no browser
 // could ever validate it for an IP address.
 async function ensureTlsCertificate(certDir, { renewDays = 30, validDays = 825 } = {}) {
   fs.mkdirSync(certDir, { recursive: true });
@@ -2494,7 +2509,7 @@ async function ensureTlsCertificate(certDir, { renewDays = 30, validDays = 825 }
   if (os.hostname()) altNames.push({ type: 2, value: os.hostname() });
 
   const generated = await selfsigned.generate(
-    [{ name: 'commonName', value: 'Rx Cloude LAN' }],
+    [{ name: 'commonName', value: 'Rx Cloud LAN' }],
     {
       days: validDays,
       keySize: 2048,

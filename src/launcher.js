@@ -50,7 +50,7 @@ function pickFolderWithDialog() {
     const psScript = `
 Add-Type -AssemblyName System.Windows.Forms
 $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-$dialog.Description = "Select Folder for Rx Cloude"
+$dialog.Description = "Select Folder for Rx Cloud"
 $dialog.ShowNewFolderButton = $true
 if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -91,7 +91,7 @@ async function runInteractive(cfg, defaultPort, defaultFolder) {
 
   console.clear();
   console.log(`=============================================================`);
-  console.log(`☁️   Rx Cloude - Portable Server`);
+  console.log(`☁️   Rx Cloud - Portable Server`);
   console.log(`👨‍💻  Developed by: ARG RABBI`);
   console.log(`=============================================================\n`);
 
@@ -145,7 +145,7 @@ async function main() {
   cfg.sharedFolder = selectedFolder;
   saveConfig(cfg);
 
-  console.log(`\n⏳ Starting Rx Cloude Server... Please wait...`);
+  console.log(`\n⏳ Starting Rx Cloud Server... Please wait...`);
 
   startServer(selectedPort, selectedFolder, (err, info) => {
     if (err) {
@@ -162,7 +162,7 @@ async function main() {
 
     console.clear();
     console.log(`=============================================================`);
-    console.log(`🎉 Rx Cloude Server is ONLINE & RUNNING!`);
+    console.log(`🎉 Rx Cloud Server is ONLINE & RUNNING!`);
     console.log(`👨‍💻 Developed by: ARG RABBI`);
     console.log(`=============================================================`);
     console.log(`📁 Shared Folder: ${info.sharedFolder}`);

@@ -1,5 +1,5 @@
 // =====================================================================
-// Rx Cloude - uploader (loaded after app.js; replaces uploadFilesReal)
+// Rx Cloud - uploader (loaded after app.js; replaces uploadFilesReal)
 //
 // Fixes in this version of the uploader:
 //  - Dragging a FOLDER in failed: the browser hands the folder over as one

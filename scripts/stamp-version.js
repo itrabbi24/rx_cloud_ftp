@@ -12,8 +12,8 @@ const version = pkgJson.version;
 
 const INFO = {
   CompanyName: 'ARG RABBI',
-  ProductName: 'Rx Cloude',
-  FileDescription: 'Rx Cloude - Portable Cloud Drive Server',
+  ProductName: 'Rx Cloud',
+  FileDescription: 'Rx Cloud - Portable Cloud Drive Server',
   FileVersion: version,
   ProductVersion: version,
   LegalCopyright: `Copyright (C) ${new Date().getFullYear()} ARG RABBI`,

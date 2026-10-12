@@ -13,7 +13,7 @@ namespace RxCloude
     public class MainForm : Form
     {
         // Keep in sync with package.json "version" and the web UI.
-        public const string AppVersion = "1.3.5";
+        public const string AppVersion = "1.3.6";
 
         private TextBox txtFolder;
         private TextBox txtPort;
@@ -139,7 +139,7 @@ namespace RxCloude
                         Version current = ParseVersion(AppVersion);
                         if (latest == null || current == null || latest <= current)
                         {
-                            if (!silent) AddLog("Rx Cloude is up to date (v" + AppVersion + ").");
+                            if (!silent) AddLog("Rx Cloud is up to date (v" + AppVersion + ").");
                             return;
                         }
                         bool firstNotice = latestVersion != latest.ToString();
@@ -152,8 +152,8 @@ namespace RxCloude
                         if (firstNotice)
                         {
                             AddLog(string.Format("Update available: v{0} (you have v{1}). Click \"Update to v{0}\" to install it.", latestVersion, AppVersion));
-                            trayIcon.ShowBalloonTip(5000, "Rx Cloude update available",
-                                "Version " + latestVersion + " is ready. Open Rx Cloude and click Update.", ToolTipIcon.Info);
+                            trayIcon.ShowBalloonTip(5000, "Rx Cloud update available",
+                                "Version " + latestVersion + " is ready. Open Rx Cloud and click Update.", ToolTipIcon.Info);
                         }
                     }));
                 }
@@ -172,10 +172,10 @@ namespace RxCloude
             }
             bool running = serverProcess != null && !serverProcess.HasExited;
             DialogResult answer = MessageBox.Show(this,
-                "Install Rx Cloude v" + latestVersion + " now?\r\n\r\n" +
+                "Install Rx Cloud v" + latestVersion + " now?\r\n\r\n" +
                 (running ? "The server will stop for a few seconds and start again automatically.\r\n" : "") +
                 "Your files, users and settings are kept.",
-                "Rx Cloude update", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                "Rx Cloud update", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (answer != DialogResult.Yes) return;
             StartSelfUpdate(running);
         }
@@ -201,7 +201,7 @@ namespace RxCloude
             updateInProgress = true;
             btnUpdate.Enabled = false;
             btnUpdate.Text = "Downloading...";
-            AddLog("Downloading Rx Cloude v" + latestVersion + "...");
+            AddLog("Downloading Rx Cloud v" + latestVersion + "...");
 
             System.Net.ServicePointManager.SecurityProtocol |= (System.Net.SecurityProtocolType)3072;
             System.Net.WebClient wc = new System.Net.WebClient();
@@ -354,8 +354,8 @@ namespace RxCloude
                 {
                     if (!launchedByAutoStart)
                     {
-                        MessageBox.Show("Rx Cloude is already running from this folder.\r\nLook for its icon in the system tray (bottom-right, near the clock).",
-                            "Rx Cloude", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("Rx Cloud is already running from this folder.\r\nLook for its icon in the system tray (bottom-right, near the clock).",
+                            "Rx Cloud", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     return;
                 }
@@ -405,7 +405,7 @@ namespace RxCloude
         public MainForm()
         {
             // Clean Light & Premium Theme
-            this.Text = "Rx Cloude - Portable Server v" + AppVersion;
+            this.Text = "Rx Cloud - Portable Server v" + AppVersion;
 
             this.Size = new Size(660, 540);
             this.StartPosition = FormStartPosition.CenterScreen;
@@ -432,7 +432,7 @@ namespace RxCloude
 
             // System Tray Icon
             trayIcon = new NotifyIcon();
-            trayIcon.Text = "Rx Cloude Server";
+            trayIcon.Text = "Rx Cloud Server";
             // if (this.Icon != null) trayIcon.Icon = this.Icon;
             // Always the app's own icon (the generic one appeared when app.ico was missing).
             trayIcon.Icon = this.Icon;
@@ -471,7 +471,7 @@ namespace RxCloude
             Label lblTitle = new Label();
             lblTitle.Location = new Point(24, 18);
             lblTitle.Size = new Size(380, 32);
-            lblTitle.Text = "Rx Cloude Server";
+            lblTitle.Text = "Rx Cloud Server";
             lblTitle.Font = new Font("Segoe UI", 16, FontStyle.Bold);
             lblTitle.ForeColor = Color.FromArgb(37, 99, 235);
             lblTitle.Location = new Point(66, 16);
@@ -657,7 +657,7 @@ namespace RxCloude
             txtLogs.ForeColor = Color.FromArgb(51, 65, 85);
             txtLogs.Font = new Font("Consolas", 9);
             txtLogs.BorderStyle = BorderStyle.FixedSingle;
-            txtLogs.Text = "[System] Rx Cloude Portable Server Ready.\r\n";
+            txtLogs.Text = "[System] Rx Cloud Portable Server Ready.\r\n";
             this.Controls.Add(txtLogs);
 
             // Small subtle footer credit
@@ -675,7 +675,7 @@ namespace RxCloude
                 if (this.WindowState == FormWindowState.Minimized) {
                     this.Hide();
                     trayIcon.Visible = true;
-                    trayIcon.ShowBalloonTip(1500, "Rx Cloude Server", "Server is running in background. Double click icon to restore.", ToolTipIcon.Info);
+                    trayIcon.ShowBalloonTip(1500, "Rx Cloud Server", "Server is running in background. Double click icon to restore.", ToolTipIcon.Info);
                 }
             };
 
@@ -706,7 +706,7 @@ namespace RxCloude
 
             if (launchedAfterUpdate)
             {
-                AddLog("Rx Cloude was updated to v" + AppVersion + ".");
+                AddLog("Rx Cloud was updated to v" + AppVersion + ".");
                 if (startServerOnLaunch)
                 {
                     this.Shown += delegate(object s5, EventArgs e5) { StartServer(); };
@@ -965,7 +965,7 @@ namespace RxCloude
         {
             using (FolderBrowserDialog dlg = new FolderBrowserDialog())
             {
-                dlg.Description = "Select Folder for Rx Cloude";
+                dlg.Description = "Select Folder for Rx Cloud";
                 dlg.ShowNewFolderButton = true;
                 if (!string.IsNullOrEmpty(txtFolder.Text) && Directory.Exists(txtFolder.Text))
                 {
@@ -1061,7 +1061,7 @@ namespace RxCloude
             {
                 AddLog(string.Format("Port {0} is blocked by web browsers (ERR_UNSAFE_PORT). Use another port, e.g. 8090, 8888 or 9000.", port));
                 MessageBox.Show(this, string.Format("Port {0} cannot be used: Chrome, Edge and Firefox refuse to open it (ERR_UNSAFE_PORT).\r\n\r\nPlease choose another port, for example 8090, 8888 or 9000.", port),
-                    "Rx Cloude - port not allowed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    "Rx Cloud - port not allowed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtPort.Focus();
                 txtPort.SelectAll();
                 return;
@@ -1079,7 +1079,7 @@ namespace RxCloude
                 Directory.CreateDirectory(folder);
             }
 
-            AddLog(string.Format("Starting Rx Cloude server engine on port {0}...", port));
+            AddLog(string.Format("Starting Rx Cloud server engine on port {0}...", port));
             AddLog(string.Format("Data folder: {0}", appDir));
 
             try
@@ -1199,10 +1199,10 @@ namespace RxCloude
                 btnBrowse.Enabled = false;
 
                 string scheme = (chkHttps != null && chkHttps.Checked) ? "https" : "http";
-                AddLog(string.Format("Rx Cloude ONLINE! Open: {0}://localhost:{1}", scheme, port));
+                AddLog(string.Format("Rx Cloud ONLINE! Open: {0}://localhost:{1}", scheme, port));
                 // AddLog("Login: use the administrator password configured on first run.");
                 AddLog(string.Format("LAN clients: {0}://<this-pc-ip>:{1}", scheme, port));
-                trayIcon.Text = "Rx Cloude - running on port " + port;
+                trayIcon.Text = "Rx Cloud - running on port " + port;
 
                 if (!string.IsNullOrEmpty(firstRunPassword))
                 {
@@ -1214,7 +1214,7 @@ namespace RxCloude
                         "Username:  admin\r\nPassword:  " + pass + "\r\n\r\n" +
                         "The password was copied to the clipboard and is also saved in data\\FIRST-LOGIN.txt.\r\n" +
                         "You will choose your own password after signing in.",
-                        "Rx Cloude - first login", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        "Rx Cloud - first login", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
         }
@@ -1232,7 +1232,7 @@ namespace RxCloude
             txtFolder.Enabled = true;
             txtPort.Enabled = true;
             btnBrowse.Enabled = true;
-            trayIcon.Text = "Rx Cloude Server (stopped)";
+            trayIcon.Text = "Rx Cloud Server (stopped)";
         }
 
         private void StopServer()

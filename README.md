@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="public/app_icon.png" alt="Rx Cloude" width="96" height="96">
+<img src="public/app_icon.png" alt="Rx Cloud" width="96" height="96">
 
-# Rx Cloude
+# Rx Cloud
 
 **A portable, zero-install cloud drive for Windows.**
 Copy one `.exe` to any PC or server, pick a port and a folder, and everyone on your network gets a private web drive. It works on desktop and phone, and phones can install it as an app.

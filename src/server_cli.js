@@ -78,7 +78,7 @@ startServer(port, folder, (err, info) => {
     console.error(`[Error] ${err.message}`);
     process.exit(1);
   }
-  console.log(`[Server] Rx Cloude v${info.version || 'unknown'} ONLINE on port ${info.port}`);
+  console.log(`[Server] Rx Cloud v${info.version || 'unknown'} ONLINE on port ${info.port}`);
   console.log(`[Server] Storage folder: ${info.sharedFolder}`);
   console.log(`[Server] Data folder: ${DATA_DIR}`);
   console.log(`[Server] Local URL: http://localhost:${info.port}`);

@@ -1,13 +1,13 @@
 // =====================================================================
-// Rx Cloude - branding (name, page title, logo chosen by the admin)
+// Rx Cloud - branding (name, page title, logo chosen by the admin)
 //
 // Elements marked data-brand-name / data-brand-logo show the custom brand.
-// The "Powered by Rx Cloude" credit is deliberately NOT marked, so the real
+// The "Powered by Rx Cloud" credit is deliberately NOT marked, so the real
 // product name stays visible whatever the branding is set to.
 // =====================================================================
 
-const DEFAULT_BRAND_NAME = 'Rx Cloude';
-const DEFAULT_BRAND_TITLE = 'Rx Cloude - Modern Cloud Storage';
+const DEFAULT_BRAND_NAME = 'Rx Cloud';
+const DEFAULT_BRAND_TITLE = 'Rx Cloud - Modern Cloud Storage';
 let currentBranding = { name: '', title: '', logoVersion: 0 };
 
 function brandEsc(v) {
@@ -143,3 +143,16 @@ async function removeBrandLogo() {
 }
 
 loadBranding();
+
+// Login page: show / hide the password.
+function toggleLoginPassword() {
+    const input = document.getElementById('loginPassword');
+    const btn = document.getElementById('loginPasswordToggle');
+    if (!input || !btn) return;
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    btn.title = show ? 'Hide password' : 'Show password';
+    btn.innerHTML = `<i data-lucide="${show ? 'eye-off' : 'eye'}" class="w-4 h-4"></i>`;
+    if (window.lucide) lucide.createIcons();
+}
