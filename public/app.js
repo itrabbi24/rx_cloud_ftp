@@ -1874,11 +1874,12 @@ async function loadUsersTable() {
                 <td class="py-3.5 px-6 text-xs font-semibold ${u.quotaMB > 0 ? 'text-gray-700' : 'text-emerald-600'}">${u.quotaMB > 0 ? u.quotaMB + ' MB' : 'Unlimited'}</td>
                 <td class="py-3.5 px-6">${userStatusCell(u)}</td>
                 <td class="py-3.5 px-6 text-right">
-                    ${u.username !== 'admin' ? `<button onclick="deleteUser(${jsArg(u.id)})" class="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer">Delete</button>` : '<span class="text-xs text-gray-400 italic">Default Admin</span>'}
+                    ${!u.isDefaultAdmin && u.username !== 'admin' && !isSelfUser(u) ? `<button onclick="deleteUser(${jsArg(u.id)})" class="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer">Delete</button>` : (u.isDefaultAdmin ? '<span class="text-xs text-gray-400 italic">Default Admin</span>' : '<span class="text-xs text-gray-400 italic">You</span>')}
                 </td>
             `;
             tbody.appendChild(tr);
         });
+        if (window.lucide) lucide.createIcons(); // lock icons on the default admin row
     } catch (err) {
         tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-xs text-red-500">${escHtml(err.message)}</td></tr>`;
     }
@@ -1888,7 +1889,12 @@ async function loadUsersTable() {
 function isSelfUser(u) {
     return currentUser && currentUser.id === u.id;
 }
+// Lock badge shown instead of controls on the protected default admin.
+function defaultAdminLock(text) {
+    return `<span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-amber-50 text-amber-700 border border-amber-200" title="The default admin is protected and cannot be changed by other admins"><i data-lucide="lock" class="w-3 h-3"></i> ${text}</span>`;
+}
 function userRoleCell(u) {
+    if (u.isDefaultAdmin && !isSelfUser(u)) return defaultAdminLock('ADMIN');
     // Your own role is shown read-only so you cannot demote yourself by accident.
     if (isSelfUser(u)) {
         return `<span class="px-2.5 py-1 text-xs font-semibold rounded-md bg-blue-50 text-blue-700 border border-blue-200">${escHtml(u.role.toUpperCase())}</span> <span class="text-[10px] text-gray-400">(you)</span>`;
@@ -1902,6 +1908,7 @@ function userRoleCell(u) {
 function userStatusCell(u) {
     const active = u.status !== 'inactive';
     const label = active ? 'Active' : 'Disabled';
+    if (u.isDefaultAdmin && !isSelfUser(u)) return defaultAdminLock('Always active');
     if (isSelfUser(u)) return `<span class="text-xs font-semibold text-emerald-600">${label}</span>`;
     return `<button type="button" role="switch" aria-checked="${active}" onclick="toggleUserStatus(${jsArg(u.id)}, ${jsArg(u.username)}, ${active})"
         class="inline-flex items-center gap-2 cursor-pointer group" title="${active ? 'Click to disable this account' : 'Click to enable this account'}">

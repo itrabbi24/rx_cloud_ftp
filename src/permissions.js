@@ -55,6 +55,12 @@ function hasPermission(user, operation, requestedPath = '') {
   return Boolean(user.permissions?.[permissionKey]);
 }
 
+// The account created on first run. It is protected: only it can change
+// itself, and no one can block, demote or delete it.
+function isDefaultAdmin(user) {
+  return Boolean(user) && (user.id === 'admin_1' || user.username === 'admin');
+}
+
 function publicUser(user) {
   return {
     id: user.id,
@@ -69,6 +75,7 @@ function publicUser(user) {
     mustChangePassword: Boolean(user.mustChangePassword),
     // Changes whenever the profile picture changes (cache-busting); 0 = none.
     avatarVersion: Number(user.avatarVersion) || 0,
+    isDefaultAdmin: isDefaultAdmin(user),
     createdAt: user.createdAt
   };
 }
@@ -78,5 +85,6 @@ module.exports = {
   isAdmin,
   hasPermission,
   pathWithinScope,
+  isDefaultAdmin,
   publicUser
 };

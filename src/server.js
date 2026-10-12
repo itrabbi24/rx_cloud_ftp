@@ -15,7 +15,8 @@ const { getConfig, saveConfig, getUsers, saveUsers, normalizePermissions, getSha
 const AdmZip = require('adm-zip');
 const unzipper = require('unzipper');
 const selfsigned = require('selfsigned');
-const { isAdmin, hasPermission, publicUser } = require('./permissions');
+// const { isAdmin, hasPermission, publicUser } = require('./permissions');
+const { isAdmin, hasPermission, publicUser, isDefaultAdmin } = require('./permissions');
 
 // Single source of truth for the build version. package.json is bundled into
 // the pkg snapshot because it is listed in the pkg.scripts/assets config.
@@ -905,6 +906,13 @@ function createServerApp() {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // The default admin is protected: other admins cannot change anything on
+    // it (password, role, status, scope, quota), and even it cannot block or
+    // demote itself (checked below with the self rule).
+    if (isDefaultAdmin(users[index]) && users[index].id !== req.user.id) {
+      return res.status(403).json({ error: 'The default admin can only be changed by itself' });
+    }
+
     if (password && password.trim()) {
       // if (password.trim().length < 12) return res.status(400).json({ error: 'Password must be at least 12 characters' });
       if (!isPasswordLongEnough(password.trim())) return res.status(400).json({ error: PASSWORD_LENGTH_ERROR });
@@ -950,8 +958,13 @@ function createServerApp() {
     const target = users.find(u => u.id === id);
 
     if (!target) return res.status(404).json({ error: 'User not found' });
-    if (target.username === 'admin') {
+    // if (target.username === 'admin') {
+    if (isDefaultAdmin(target)) {
       return res.status(400).json({ error: 'Default admin cannot be deleted' });
+    }
+    // Deleting your own account would end your session mid-action.
+    if (target.id === req.user.id) {
+      return res.status(400).json({ error: 'You cannot delete your own account' });
     }
 
     users = users.filter(u => u.id !== id);

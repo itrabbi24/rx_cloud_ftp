@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.3.8] - 2026-10-12
+
+### Security
+- The **default admin** is protected: other admins can no longer change its password, role, status, folder scope or quota, and nobody can block, demote or delete it. In Users & Access it shows lock badges instead of controls.
+- Admins can no longer delete their own account.
+
 ## [1.3.7] - 2026-10-12
 
 ### Removed
@@ -129,7 +135,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.7...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.8...HEAD
+[1.3.8]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.7...v1.3.8
 [1.3.7]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.6...v1.3.7
 [1.3.6]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.5...v1.3.6
 [1.3.5]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.4...v1.3.5
