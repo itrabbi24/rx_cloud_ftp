@@ -945,6 +945,10 @@ function createServerApp() {
     if (quotaMB !== undefined) users[index].quotaMB = Number(quotaMB);
 
     saveUsers(users);
+    // A new own/custom folder must exist, or the user lands on "Directory not found".
+    if (users[index].folderScope) {
+      try { fs.mkdirSync(path.join(getConfig().sharedFolder, users[index].folderScope), { recursive: true }); } catch (e) {}
+    }
     broadcastLog('info', `Admin updated permissions for user: "${users[index].username}"`);
     res.json({ success: true, user: publicUser(users[index]) });
   });

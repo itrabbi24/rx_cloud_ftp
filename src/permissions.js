@@ -25,11 +25,30 @@ function normalizeRelative(value) {
   return path.posix.normalize(String(value || '').replace(/\\/g, '/')).replace(/^\.\//, '').replace(/^\/+/, '');
 }
 
+// function pathWithinScope(user, requestedPath) {
+//   if (isAdmin(user)) return true;
+//   // The filesystem jail applies folderScope. Here paths are relative to that
+//   // jail, so reject only absolute paths and let folder ACLs decide the rest.
+//   return !path.isAbsolute(String(requestedPath || ''));
+// }
+// BUG (since the first version): the browser sends drive paths like "/" and
+// "/Folder", which path.isAbsolute() treats as absolute, so EVERY non-admin
+// was denied listing, opening and creating folders ("View permission denied")
+// while uploads (which strip the slash) still went through. A leading slash
+// means "the root of the user's own drive"; only real escapes are rejected.
 function pathWithinScope(user, requestedPath) {
   if (isAdmin(user)) return true;
-  // The filesystem jail applies folderScope. Here paths are relative to that
-  // jail, so reject only absolute paths and let folder ACLs decide the rest.
-  return !path.isAbsolute(String(requestedPath || ''));
+  const raw = String(requestedPath || '').replace(/\\/g, '/');
+  // Drive letters (C:/...) and UNC shares (//server/...) point outside the jail.
+  if (/^[a-zA-Z]:/.test(raw) || raw.startsWith('//')) return false;
+  // ".." must not climb above the user's root.
+  let depth = 0;
+  for (const part of raw.split('/')) {
+    if (!part || part === '.') continue;
+    depth += part === '..' ? -1 : 1;
+    if (depth < 0) return false;
+  }
+  return true;
 }
 
 function hasPermission(user, operation, requestedPath = '') {

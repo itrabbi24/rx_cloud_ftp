@@ -5,6 +5,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.3.9] - 2026-10-14
+
+### Fixed
+- **Standard users could not open the drive.** Every non-admin got "View permission denied" when listing or opening folders and "Create folder permission denied" when making one, in every access mode (own, global, custom). Uploads still went through, so files were saved but the user could never see them. Paths from the browser start with "/", which the permission check wrongly rejected as an absolute path. It now treats "/" as the user's own drive root and still blocks real escapes (drive letters, network shares, "..").
+
+### Added
+- **Edit user**: an Edit button in Users & Access opens the user dialog filled in, to change access mode, folder, permissions, quota, role or password (empty password keeps the current one). The default admin can only be edited by itself.
+- A note in the user dialog when Global access is chosen: the quota counts the whole drive, so it switches a 1 GB default to Unlimited.
+
+### Changed
+- The selected access mode in the user dialog is the highlighted one (the first option always looked selected).
+
 ## [1.3.8] - 2026-10-12
 
 ### Security
@@ -135,7 +147,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.8...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.9...HEAD
+[1.3.9]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.8...v1.3.9
 [1.3.8]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.7...v1.3.8
 [1.3.7]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.6...v1.3.7
 [1.3.6]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.5...v1.3.6

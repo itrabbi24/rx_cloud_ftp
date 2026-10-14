@@ -1855,6 +1855,7 @@ async function loadUsersTable() {
         if (!res.ok) throw new Error(users.error || 'Failed to load users');
 
         tbody.innerHTML = '';
+        usersCache = users;
         users.forEach(u => {
             const tr = document.createElement('tr');
             // tr.className = "hover:bg-gray-50/50 transition-colors";
@@ -1873,7 +1874,8 @@ async function loadUsersTable() {
                 <td class="py-3.5 px-6 text-xs text-gray-600 font-mono"><code>${u.folderScope ? '/' + u.folderScope : 'Entire Drive (/)'}</code></td>
                 <td class="py-3.5 px-6 text-xs font-semibold ${u.quotaMB > 0 ? 'text-gray-700' : 'text-emerald-600'}">${u.quotaMB > 0 ? u.quotaMB + ' MB' : 'Unlimited'}</td>
                 <td class="py-3.5 px-6">${userStatusCell(u)}</td>
-                <td class="py-3.5 px-6 text-right">
+                <td class="py-3.5 px-6 text-right whitespace-nowrap">
+                    ${!u.isDefaultAdmin || isSelfUser(u) ? `<button onclick="openEditUserModal(${jsArg(u.id)})" class="px-3 py-1 mr-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer">Edit</button>` : ''}
                     ${!u.isDefaultAdmin && u.username !== 'admin' && !isSelfUser(u) ? `<button onclick="deleteUser(${jsArg(u.id)})" class="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer">Delete</button>` : (u.isDefaultAdmin ? '<span class="text-xs text-gray-400 italic">Default Admin</span>' : '<span class="text-xs text-gray-400 italic">You</span>')}
                 </td>
             `;
@@ -2187,6 +2189,14 @@ function generateRandomUserPassword() {
 }
 
 function handleFolderModeChange(mode) {
+    const note = document.getElementById('globalQuotaNote');
+    if (note) note.classList.toggle('hidden', mode !== 'global');
+    // A quota is measured on the whole visible folder; for global access that
+    // is the entire drive, so a 1 GB default blocked every upload.
+    if (mode === 'global' && !editingUserId) {
+        const q = document.getElementById('modalQuota');
+        if (q && q.value === '1024') q.value = '0';
+    }
     const container = document.getElementById('customScopeContainer');
     if (container) {
         if (mode === 'custom') {
@@ -2199,7 +2209,55 @@ function handleFolderModeChange(mode) {
     }
 }
 
+// null = the dialog creates a user; an id = it edits that user.
+let editingUserId = null;
+let usersCache = [];
+
+function setUserModalMode(user) {
+    editingUserId = user ? user.id : null;
+    document.getElementById('userModalTitle').innerText = user ? `Edit User: ${user.username}` : 'Create New User';
+    document.getElementById('userModalSubtitle').innerText = user ? 'Change access, permissions, quota or password' : 'Provision a new account with custom permissions & quota';
+    document.getElementById('userModalSubmitText').innerText = user ? 'Save Changes' : 'Create Account';
+    document.getElementById('modalPasswordHint').classList.toggle('hidden', !user);
+    const uname = document.getElementById('modalUsername');
+    uname.readOnly = !!user;
+    uname.classList.toggle('opacity-60', !!user);
+    const pwd = document.getElementById('modalPassword');
+    pwd.required = !user;
+    pwd.placeholder = user ? 'Leave empty to keep' : '••••••••';
+}
+
+function openEditUserModal(id) {
+    const u = usersCache.find(x => x.id === id);
+    if (!u) return;
+    openCreateUserModal();
+    setUserModalMode(u);
+    document.getElementById('modalUsername').value = u.username;
+    document.getElementById('modalPassword').value = '';
+    document.getElementById('modalQuota').value = u.quotaMB || 0;
+    const roleSel = document.getElementById('modalRole');
+    roleSel.value = u.role === 'admin' ? 'admin' : 'user';
+    // Your own role is changed from the table (and cannot be lowered).
+    roleSel.disabled = isSelfUser(u);
+    const mode = u.accessMode || (u.folderScope ? 'custom' : 'global');
+    // An "own" user whose folder is not users/<name> is shown as custom so the path is not lost.
+    const shownMode = mode === 'own' && u.folderScope !== `users/${u.username}` ? 'custom' : mode;
+    document.querySelectorAll('input[name="folderModeRadio"]').forEach(r => { r.checked = r.value === shownMode; });
+    document.getElementById('modalFolderScope').value = u.folderScope || '';
+    handleFolderModeChange(shownMode);
+    const p = u.permissions || {};
+    document.getElementById('permUpload').checked = !!p.canUpload;
+    document.getElementById('permDownload').checked = !!p.canDownload;
+    document.getElementById('permCreateFolder').checked = !!p.canCreateFolder;
+    document.getElementById('permRename').checked = !!(p.canRename || p.canMove);
+    document.getElementById('permDelete').checked = !!p.canDelete;
+    document.getElementById('permShare').checked = !!p.canShare;
+}
+
 function openCreateUserModal() {
+    setUserModalMode(null);
+    const roleSel = document.getElementById('modalRole');
+    if (roleSel) roleSel.disabled = false;
     document.getElementById('createUserModal').classList.remove('hidden');
     document.getElementById('createUserModal').classList.add('flex');
     document.getElementById('modalUsername').value = '';
@@ -2271,6 +2329,28 @@ document.getElementById('createUserForm').onsubmit = async (e) => {
         quotaMB,
         permissions
     };
+
+    // Editing: PUT the changes; an empty password keeps the current one.
+    if (editingUserId) {
+        delete payload.username;
+        if (!password) delete payload.password;
+        if (document.getElementById('modalRole').disabled) delete payload.role;
+        try {
+            const res = await apiFetch(`/api/users/${encodeURIComponent(editingUserId)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to save user');
+            showToast(`User "${username}" updated`);
+            closeCreateUserModal();
+            loadUsersTable();
+        } catch (err) {
+            showToast(err.message);
+        }
+        return;
+    }
 
     try {
         const res = await apiFetch('/api/users', {
