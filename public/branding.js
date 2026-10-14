@@ -56,8 +56,30 @@ function applyBranding(b) {
         link.setAttribute('href', logo || link.dataset.origHref);
     });
 
+    applyLoginPanel();
     fillBrandingForm();
     if (window.lucide) lucide.createIcons();
+}
+
+// Login page left panel: headline, text, feature badges and picture.
+function applyLoginPanel() {
+    const b = currentBranding;
+    document.querySelectorAll('[data-brand-headline]').forEach(el => {
+        if (el.dataset.orig === undefined) el.dataset.orig = el.textContent;
+        el.textContent = b.loginHeadline || el.dataset.orig;
+    });
+    document.querySelectorAll('[data-brand-subtext]').forEach(el => {
+        if (el.dataset.orig === undefined) el.dataset.orig = el.textContent;
+        el.textContent = b.loginSubtext || el.dataset.orig;
+    });
+    document.querySelectorAll('[data-brand-badges]').forEach(el => el.classList.toggle('hidden', b.showBadges === false));
+    const banner = b.bannerVersion ? `/api/branding/banner?v=${b.bannerVersion}` : '';
+    document.querySelectorAll('[data-brand-banner]').forEach(el => {
+        if (el.dataset.origHtml === undefined) el.dataset.origHtml = el.innerHTML;
+        el.innerHTML = banner
+            ? `<img src="${banner}" alt="" class="w-full max-w-[460px] max-h-[46vh] object-contain rounded-2xl drop-shadow-2xl">`
+            : el.dataset.origHtml;
+    });
 }
 
 async function loadBranding() {
@@ -82,6 +104,20 @@ function fillBrandingForm() {
         ? 'w-12 h-12 rounded-xl overflow-hidden border border-gray-200 bg-white flex items-center justify-center shrink-0'
         : 'w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0';
     document.getElementById('btnBrandLogoRemove').classList.toggle('hidden', !logo);
+
+    const h = document.getElementById('brandHeadlineInput');
+    if (h) {
+        h.value = currentBranding.loginHeadline || '';
+        document.getElementById('brandSubtextInput').value = currentBranding.loginSubtext || '';
+        document.getElementById('brandShowBadges').checked = currentBranding.showBadges !== false;
+        const bp = document.getElementById('brandBannerPreview');
+        const banner = currentBranding.bannerVersion ? `/api/branding/banner?v=${currentBranding.bannerVersion}` : '';
+        bp.innerHTML = banner ? `<img src="${banner}" alt="" class="w-full h-full object-cover">` : '<i data-lucide="image" class="w-5 h-5"></i>';
+        bp.className = banner
+            ? 'w-20 h-12 rounded-lg overflow-hidden border border-gray-200 bg-white flex items-center justify-center shrink-0'
+            : 'w-20 h-12 rounded-lg overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0';
+        document.getElementById('btnBrandBannerRemove').classList.toggle('hidden', !banner);
+    }
 }
 
 async function saveBranding() {
@@ -93,7 +129,13 @@ async function saveBranding() {
         const res = await apiFetch('/api/branding', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, title })
+            // body: JSON.stringify({ name, title })
+            body: JSON.stringify({
+                name, title,
+                loginHeadline: (document.getElementById('brandHeadlineInput') || {}).value || '',
+                loginSubtext: (document.getElementById('brandSubtextInput') || {}).value || '',
+                showBadges: !document.getElementById('brandShowBadges') || document.getElementById('brandShowBadges').checked
+            })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Could not save branding');
@@ -109,6 +151,12 @@ async function saveBranding() {
 function resetBrandingText() {
     document.getElementById('brandNameInput').value = '';
     document.getElementById('brandTitleInput').value = '';
+    const h = document.getElementById('brandHeadlineInput');
+    if (h) {
+        h.value = '';
+        document.getElementById('brandSubtextInput').value = '';
+        document.getElementById('brandShowBadges').checked = true;
+    }
     saveBranding();
 }
 
@@ -155,4 +203,35 @@ function toggleLoginPassword() {
     btn.title = show ? 'Hide password' : 'Show password';
     btn.innerHTML = `<i data-lucide="${show ? 'eye-off' : 'eye'}" class="w-4 h-4"></i>`;
     if (window.lucide) lucide.createIcons();
+}
+
+// --- Login page picture ----------------------------------------------------
+async function uploadBrandBanner(event) {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast('Picture is too large (max 5 MB)'); return; }
+    const form = new FormData();
+    form.append('banner', file);
+    try {
+        const res = await apiFetch('/api/branding/banner', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not upload picture');
+        applyBranding(data.branding);
+        showToast('Login picture updated');
+    } catch (err) {
+        showToast(err.message);
+    }
+}
+
+async function removeBrandBanner() {
+    try {
+        const res = await apiFetch('/api/branding/banner', { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not remove picture');
+        applyBranding(data.branding);
+        showToast('Default illustration restored');
+    } catch (err) {
+        showToast(err.message);
+    }
 }

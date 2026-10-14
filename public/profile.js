@@ -40,7 +40,8 @@ function applyProfileUi() {
     const name = document.getElementById('profileModalName');
     const role = document.getElementById('profileModalRole');
     if (name) name.textContent = currentUser.username;
-    if (role) role.textContent = currentUser.role === 'admin' ? 'Super Admin' : 'Standard User';
+    // if (role) role.textContent = currentUser.role === 'admin' ? 'Super Admin' : 'Standard User';
+    if (role) role.textContent = typeof roleLabel === 'function' ? roleLabel(currentUser) : (currentUser.role === 'admin' ? 'Admin' : 'Standard User');
     const remove = document.getElementById('btnRemoveAvatar');
     if (remove) remove.disabled = !currentUser.avatarVersion;
     if (remove) remove.classList.toggle('opacity-50', !currentUser.avatarVersion);

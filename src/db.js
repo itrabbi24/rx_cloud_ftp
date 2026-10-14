@@ -317,6 +317,7 @@ function updateVaultInfo(userId, updates) {
 }
 
 module.exports = {
+  generateReadablePassword,
   DATA_DIR,
   DEFAULT_PERMISSIONS,
   ADMIN_PERMISSIONS,

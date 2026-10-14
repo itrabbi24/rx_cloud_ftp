@@ -5,6 +5,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-14
+
+### Added
+- **Reset password** (Administration > Users): creates a temporary password to hand over, signs the user out on every device and makes them choose a new password at their next login. The default admin and your own account are excluded.
+- **Show Recent** switch in the account menu, and a Hide link on the Recent section. Saved per user.
+- **Login page customisation** (Administration > Branding): headline, the text under it, a picture that replaces the illustration, and a switch for the three feature badges.
+
+### Changed
+- **Users & Access is now Administration**, with three tabs: Users, Settings and Branding.
+- The sidebar no longer repeats My Profile, Change Password and Log Out; they are in the account menu at the top right.
+- Only the protected first admin is labelled **Super Admin**; other admins show as **Admin**.
+
+### Security
+- Login tokens now carry a password version, so an admin password reset ends every existing session of that user.
+
 ## [1.4.1] - 2026-10-14
 
 ### Added
@@ -165,7 +180,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.9...v1.4.0
 [1.3.9]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.8...v1.3.9

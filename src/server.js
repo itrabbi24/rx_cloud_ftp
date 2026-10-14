@@ -11,6 +11,7 @@ const mime = require('mime-types');
 const { WebSocketServer } = require('ws');
 const os = require('os');
 const crypto = require('crypto');
+const { generateReadablePassword } = require('./db');
 const { getConfig, saveConfig, getUsers, saveUsers, normalizePermissions, getShares, saveShares, getUserMetadata, updateFileMeta, getVaultInfo, setVaultPin, verifyVaultPin, updateVaultInfo, getSessionDays, getUploadByteLimit, applyConfigUpdate, ABSOLUTE_MAX_UPLOAD_BYTES, ensureUsersExist, clearFirstLoginFile, FIRST_LOGIN_FILE } = require('./db');
 const AdmZip = require('adm-zip');
 const unzipper = require('unzipper');
@@ -475,6 +476,10 @@ function createServerApp() {
       if (!user) {
         return res.status(403).json({ error: 'User not found' });
       }
+      // Tokens issued before an admin password reset are no longer valid.
+      if ((Number(decoded.pv) || 0) !== (Number(user.passwordVersion) || 0)) {
+        return res.status(401).json({ error: 'Your password was reset by an administrator. Please sign in again.' });
+      }
       // A disabled account is signed out at once, not only when its token expires.
       if (user.status === 'inactive') {
         return res.status(401).json({ error: 'This account has been disabled by an administrator' });
@@ -501,8 +506,10 @@ function createServerApp() {
     }
 
     const cfg = getConfig();
+    // pv = password version: an admin password reset bumps it, which signs
+    // the user out of every device (old tokens no longer match).
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
+      { id: user.id, username: user.username, role: user.role, pv: Number(user.passwordVersion) || 0 },
       cfg.jwtSecret,
       { expiresIn: `${getSessionDays(cfg)}d` }
     );
@@ -639,9 +646,26 @@ function createServerApp() {
     }
     return null;
   }
+  function brandBannerFile() {
+    for (const ext of Object.keys(AVATAR_TYPES)) {
+      const file = path.join(BRAND_DIR, `banner.${ext}`);
+      if (fs.existsSync(file)) return { file, ext };
+    }
+    return null;
+  }
   function publicBranding(cfg) {
     const b = cfg.branding || {};
-    return { name: b.name || '', title: b.title || '', logoVersion: brandLogoFile() ? (b.logoVersion || 1) : 0 };
+    // return { name: b.name || '', title: b.title || '', logoVersion: brandLogoFile() ? (b.logoVersion || 1) : 0 };
+    return {
+      name: b.name || '',
+      title: b.title || '',
+      logoVersion: brandLogoFile() ? (b.logoVersion || 1) : 0,
+      // Login page left panel
+      loginHeadline: b.loginHeadline || '',
+      loginSubtext: b.loginSubtext || '',
+      showBadges: b.showBadges !== false,
+      bannerVersion: brandBannerFile() ? (b.bannerVersion || 1) : 0
+    };
   }
   function requireAdmin(req, res) {
     if (req.user.role !== 'admin') { res.status(403).json({ error: 'Admin permission required' }); return false; }
@@ -667,7 +691,11 @@ function createServerApp() {
     const cfg = getConfig();
     const name = clean(req.body && req.body.name).slice(0, 40);
     const title = clean(req.body && req.body.title).slice(0, 80);
-    cfg.branding = { ...(cfg.branding || {}), name, title };
+    // cfg.branding = { ...(cfg.branding || {}), name, title };
+    const loginHeadline = clean(req.body && req.body.loginHeadline).slice(0, 80);
+    const loginSubtext = clean(req.body && req.body.loginSubtext).slice(0, 200);
+    const showBadges = !(req.body && req.body.showBadges === false);
+    cfg.branding = { ...(cfg.branding || {}), name, title, loginHeadline, loginSubtext, showBadges };
     saveConfig(cfg);
     broadcastLog('info', `Admin updated branding: name "${name || 'default'}", title "${title || 'default'}"`);
     res.json({ success: true, branding: publicBranding(cfg) });
@@ -692,6 +720,42 @@ function createServerApp() {
       broadcastLog('info', 'Admin changed the logo');
       res.json({ success: true, branding: publicBranding(cfg) });
     });
+  });
+
+  // Login page picture (replaces the illustration). Public read, admin write.
+  const bannerUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 } });
+  currentApp.get('/api/branding/banner', (req, res) => {
+    const found = brandBannerFile();
+    if (!found) return res.status(404).json({ error: 'No banner' });
+    res.setHeader('Content-Type', AVATAR_TYPES[found.ext]);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.sendFile(found.file, { dotfiles: 'allow' });
+  });
+  currentApp.post('/api/branding/banner', authenticateToken, (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    bannerUpload.single('banner')(req, res, (err) => {
+      if (err) {
+        return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({
+          error: err.code === 'LIMIT_FILE_SIZE' ? 'Picture is too large (max 5 MB)' : err.message
+        });
+      }
+      const ext = sniffImageType(req.file && req.file.buffer);
+      if (!ext) return res.status(400).json({ error: 'Please choose a JPG, PNG, WebP or GIF image' });
+      fs.mkdirSync(BRAND_DIR, { recursive: true });
+      for (const e of Object.keys(AVATAR_TYPES)) { try { fs.rmSync(path.join(BRAND_DIR, `banner.${e}`), { force: true }); } catch (x) {} }
+      fs.writeFileSync(path.join(BRAND_DIR, `banner.${ext}`), req.file.buffer);
+      const cfg = getConfig();
+      cfg.branding = { ...(cfg.branding || {}), bannerVersion: Date.now() };
+      saveConfig(cfg);
+      broadcastLog('info', 'Admin changed the login page picture');
+      res.json({ success: true, branding: publicBranding(cfg) });
+    });
+  });
+  currentApp.delete('/api/branding/banner', authenticateToken, (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    for (const e of Object.keys(AVATAR_TYPES)) { try { fs.rmSync(path.join(BRAND_DIR, `banner.${e}`), { force: true }); } catch (x) {} }
+    res.json({ success: true, branding: publicBranding(getConfig()) });
   });
 
   currentApp.delete('/api/branding/logo', authenticateToken, (req, res) => {
@@ -893,6 +957,31 @@ function createServerApp() {
     }
     broadcastLog('info', `Admin created new user: "${username}" [Role: ${newUser.role}]`);
     res.status(201).json({ success: true, user: publicUser(newUser) });
+  });
+
+  // Admin password reset: sets a temporary password, signs the user out
+  // everywhere and makes them choose a new one at their next login.
+  currentApp.post('/api/users/:id/reset-password', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin permission required' });
+    }
+    const users = getUsers();
+    const index = users.findIndex(u => u.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: 'User not found' });
+    const target = users[index];
+    if (isDefaultAdmin(target)) {
+      return res.status(403).json({ error: 'The default admin password can only be changed by itself (Change Password)' });
+    }
+    if (target.id === req.user.id) {
+      return res.status(400).json({ error: 'Use Change Password for your own account' });
+    }
+    const tempPassword = generateReadablePassword(10);
+    target.passwordHash = bcrypt.hashSync(tempPassword, 10);
+    target.mustChangePassword = true;
+    target.passwordVersion = (Number(target.passwordVersion) || 0) + 1;
+    saveUsers(users);
+    broadcastLog('warning', `Admin "${req.user.username}" reset the password of "${target.username}"`);
+    res.json({ success: true, username: target.username, tempPassword });
   });
 
   currentApp.put('/api/users/:id', authenticateToken, (req, res) => {

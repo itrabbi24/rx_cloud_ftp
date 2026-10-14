@@ -1,4 +1,10 @@
 // State Management
+// Only the protected first admin is the Super Admin; other admins are Admins.
+function roleLabel(u) {
+    if (!u) return '';
+    if (u.isDefaultAdmin) return 'Super Admin';
+    return u.role === 'admin' ? 'Admin' : 'Standard User';
+}
 let currentUser = null;
 let authToken = localStorage.getItem('drive_token') || null;
 let currentPath = '/';
@@ -120,7 +126,8 @@ function showDrive() {
     const pAvatar = document.getElementById('profile-avatar');
 
     if (pName && currentUser) pName.innerText = currentUser.username;
-    if (pRole && currentUser) pRole.innerText = currentUser.role === 'admin' ? 'Super Admin' : 'Standard User';
+    // if (pRole && currentUser) pRole.innerText = currentUser.role === 'admin' ? 'Super Admin' : 'Standard User';
+    if (pRole && currentUser) pRole.innerText = roleLabel(currentUser);
     if (pAvatar && currentUser) pAvatar.innerText = currentUser.username.charAt(0).toUpperCase();
 
     if (navUsersBtn) {
@@ -497,12 +504,40 @@ function clearRecent() {
     try { localStorage.removeItem(recentKey()); } catch (e) {}
     renderRecent();
 }
+// Recent can be switched off per user (saved in this browser).
+function recentPrefKey() {
+    return 'rx_show_recent_' + ((currentUser && currentUser.username) || 'anon');
+}
+function isRecentEnabled() {
+    try { return localStorage.getItem(recentPrefKey()) !== '0'; } catch (e) { return true; }
+}
+function setRecentEnabled(on) {
+    try { localStorage.setItem(recentPrefKey(), on ? '1' : '0'); } catch (e) {}
+    syncRecentSwitch();
+    renderRecent();
+    showToast(on ? 'Recent is shown on My Drive' : 'Recent hidden. Turn it back on from your account menu.');
+}
+function syncRecentSwitch() {
+    const btn = document.getElementById('profileMenuRecent');
+    if (!btn) return;
+    const on = isRecentEnabled();
+    btn.setAttribute('aria-checked', String(on));
+    const sw = btn.querySelector('.rx-recent-switch');
+    if (sw) {
+        sw.classList.toggle('bg-emerald-500', on);
+        sw.classList.toggle('bg-gray-300', !on);
+        const knob = sw.firstElementChild;
+        if (knob) knob.style.left = on ? '15px' : '2px';
+    }
+}
+
 function renderRecent() {
     const wrap = document.getElementById('recent-wrapper');
     const list = document.getElementById('recent-list');
     if (!wrap || !list) return;
     const items = getRecent();
-    if (currentPath !== '/' || searchQuery || !items.length) { wrap.classList.add('hidden'); return; }
+    // if (currentPath !== '/' || searchQuery || !items.length) { wrap.classList.add('hidden'); return; }
+    if (!isRecentEnabled() || currentPath !== '/' || searchQuery || !items.length) { wrap.classList.add('hidden'); return; }
     wrap.classList.remove('hidden');
     list.innerHTML = '';
     items.forEach(r => {
@@ -1883,6 +1918,7 @@ async function loadUsersTable() {
                 <td class="py-3.5 px-6 text-right whitespace-nowrap">
                     <div class="inline-flex items-center justify-end gap-1.5 flex-nowrap">
                     ${!u.isDefaultAdmin || isSelfUser(u) ? `<button onclick="openEditUserModal(${jsArg(u.id)})" class="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer">Edit</button>` : ''}
+                    ${!u.isDefaultAdmin && !isSelfUser(u) ? `<button onclick="resetUserPassword(${jsArg(u.id)}, ${jsArg(u.username)})" title="Reset password" class="inline-flex items-center gap-1 px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer">Reset password</button>` : ''}
                     ${!u.isDefaultAdmin && u.username !== 'admin' && !isSelfUser(u) ? `<button onclick="deleteUser(${jsArg(u.id)})" class="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer">Delete</button>` : (u.isDefaultAdmin ? '<span class="text-xs text-gray-400 italic">Default Admin</span>' : '<span class="text-xs text-gray-400 italic">You</span>')}
                     </div>
                 </td>
@@ -2924,8 +2960,9 @@ function toggleProfileMenu(e) {
     const open = menu.classList.contains('hidden');
     if (open) {
         document.getElementById('profileMenuName').innerText = (currentUser && currentUser.username) || '';
-        document.getElementById('profileMenuRole').innerText = currentUser && currentUser.role === 'admin' ? 'Super Admin' : 'Standard User';
+        document.getElementById('profileMenuRole').innerText = roleLabel(currentUser);
         document.getElementById('profileMenuUsers').classList.toggle('hidden', !(currentUser && currentUser.role === 'admin'));
+        syncRecentSwitch();
     }
     menu.classList.toggle('hidden', !open);
     const btn = document.getElementById('profileMenuBtn');
@@ -2943,3 +2980,75 @@ document.addEventListener('click', (e) => {
     if (wrap && !wrap.contains(e.target)) closeProfileMenu();
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeProfileMenu(); });
+
+
+// --- Admin: reset a user's password ---------------------------------------
+async function resetUserPassword(id, username) {
+    const ok = await rxConfirm({
+        title: 'Reset password?',
+        text: `A temporary password will be created for "${username}". They are signed out on every device and must choose a new password when they next sign in.`,
+        confirmText: 'Reset password',
+        danger: true
+    });
+    if (!ok) return;
+    try {
+        const res = await apiFetch(`/api/users/${encodeURIComponent(id)}/reset-password`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not reset password');
+        showTempPassword(data.username, data.tempPassword);
+        loadUsersTable();
+    } catch (err) {
+        showToast(err.message);
+    }
+}
+
+function showTempPassword(username, pwd) {
+    const html = `<div style="text-align:left;font-size:13px;color:#475569">
+        Give this temporary password to <b>${escHtml(username)}</b>. It works once: they must set a new password right after signing in.
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+            <code id="rxTempPwd" style="flex:1;padding:10px 12px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:10px;font-size:16px;font-weight:700;letter-spacing:.06em;color:#0f172a">${escHtml(pwd)}</code>
+            <button type="button" id="rxCopyPwd" style="padding:10px 14px;border-radius:10px;background:#2563eb;color:#fff;font-weight:600;font-size:12px;cursor:pointer">Copy</button>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:#94a3b8">This password is shown only now.</div></div>`;
+    const wire = () => {
+        const btn = document.getElementById('rxCopyPwd');
+        if (!btn) return;
+        btn.onclick = async () => {
+            try { await navigator.clipboard.writeText(pwd); btn.textContent = 'Copied'; }
+            catch (e) {
+                // Plain-HTTP pages have no clipboard API; select the text instead.
+                const r = document.createRange(); r.selectNodeContents(document.getElementById('rxTempPwd'));
+                const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+                btn.textContent = 'Press Ctrl+C';
+            }
+        };
+    };
+    if (window.Swal) {
+        Swal.fire({ title: 'Password reset', html, icon: 'success', confirmButtonText: 'Done', didOpen: wire });
+    } else {
+        window.prompt(`Temporary password for ${username}:`, pwd);
+    }
+}
+
+
+// --- Administration tabs: Users / Settings / Branding ---------------------
+function setAdminTab(tab) {
+    if (!['users', 'settings', 'branding'].includes(tab)) tab = 'users';
+    try { localStorage.setItem('rx_admin_tab', tab); } catch (e) {}
+    document.querySelectorAll('[data-admin-section]').forEach(el => {
+        el.classList.toggle('hidden', el.getAttribute('data-admin-section') !== tab);
+    });
+    document.querySelectorAll('.admin-tab').forEach(btn => {
+        const on = btn.getAttribute('data-admin-tab') === tab;
+        btn.setAttribute('aria-selected', String(on));
+        btn.classList.toggle('bg-white', on);
+        btn.classList.toggle('text-blue-600', on);
+        btn.classList.toggle('shadow-sm', on);
+        btn.classList.toggle('text-gray-500', !on);
+    });
+}
+(function initAdminTab() {
+    let t = 'users';
+    try { t = localStorage.getItem('rx_admin_tab') || 'users'; } catch (e) {}
+    setAdminTab(t);
+})();

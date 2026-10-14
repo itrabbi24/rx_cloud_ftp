@@ -7,7 +7,8 @@ function isPhoneLayout() {
     return window.matchMedia('(max-width: 767.98px)').matches;
 }
 
-const MOBILE_TITLES = { drive: 'My Drive', starred: 'Starred', vault: 'Vault', trash: 'Trash', users: 'Users' };
+// const MOBILE_TITLES = { drive: 'My Drive', starred: 'Starred', vault: 'Vault', trash: 'Trash', users: 'Users' };
+const MOBILE_TITLES = { drive: 'My Drive', starred: 'Starred', vault: 'Vault', trash: 'Trash', users: 'Administration' };
 
 function setMobileActive(tab) {
     document.body.setAttribute('data-tab', tab);
