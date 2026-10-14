@@ -1742,9 +1742,15 @@ function previewFile(name) {
     container.innerHTML = '';
 
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
-        container.innerHTML = `<img src="${fileUrl}" class="max-w-full max-h-[75vh] rounded-xl shadow-md object-contain">`;
+        // container.innerHTML = `<img src="${fileUrl}" class="max-w-full max-h-[75vh] rounded-xl shadow-md object-contain">`;
+        // Zoom, pan, pinch and rotate (viewer.js).
+        if (typeof renderZoomableImage === 'function') renderZoomableImage(container, fileUrl, name);
+        else container.innerHTML = `<img src="${fileUrl}" class="max-w-full max-h-[75vh] rounded-xl shadow-md object-contain">`;
     } else if (['mp4', 'webm', 'mov', 'mkv', 'avi'].includes(ext)) {
         container.innerHTML = `<video id="previewVideoEl" controls autoplay src="${fileUrl}" class="max-w-full max-h-[75vh] rounded-xl shadow-md bg-black"></video>`;
+    } else if (['pdf'].includes(ext) && typeof renderZoomablePdf === 'function') {
+        // PDF with zoom controls (viewer.js); the plain viewer below stays as a fallback.
+        renderZoomablePdf(container, fileUrl, name);
     } else if (['pdf'].includes(ext)) {
         container.innerHTML = `
             <div class="w-full h-[75vh] flex flex-col bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">

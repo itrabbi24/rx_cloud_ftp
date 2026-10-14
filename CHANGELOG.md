@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-10-14
+
+### Added
+- **Zoom in the picture preview**: zoom out / percentage / zoom in buttons, Fit and Rotate. Mouse-wheel zoom towards the pointer, drag to move around, double-click (or double-tap) to zoom, pinch on phones, and the keys + - 0. While zoomed in, swiping moves the picture instead of changing file.
+- **Zoom in the PDF preview**: zoom out / percentage / zoom in and Fit-width buttons above the document, plus the keys + - 0.
+
 ## [1.4.0] - 2026-10-14
 
 ### Added
@@ -159,7 +165,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.9...v1.4.0
 [1.3.9]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.8...v1.3.9
 [1.3.8]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.7...v1.3.8
