@@ -5,6 +5,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-10-14
+
+### Added
+- **Show Recent on My Drive** switch in Administration > Settings. Turning it off hides Recent for every user and removes their own Show Recent switch; turning it on restores each user's own choice.
+
 ## [1.5.0] - 2026-10-14
 
 ### Added
@@ -180,7 +185,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.9...v1.4.0

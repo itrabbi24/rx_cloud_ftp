@@ -779,7 +779,8 @@ function createServerApp() {
       maxUploadMB: cfg.maxUploadMB !== undefined ? cfg.maxUploadMB : 1024,
       allowRegistration: !!cfg.allowRegistration,
       driveLimitGB: Number(cfg.driveLimitGB) || 0,
-      dateFormat: cfg.dateFormat || 'relative'
+      dateFormat: cfg.dateFormat || 'relative',
+      recentEnabled: cfg.recentEnabled !== false
     });
   });
 
@@ -805,8 +806,10 @@ function createServerApp() {
     // const cfg = applyConfigUpdate(getConfig(), { maxUploadMB, allowRegistration, sessionDays });
     // const { maxUploadMB, allowRegistration, sessionDays, driveLimitGB } = req.body;
     // const cfg = applyConfigUpdate(getConfig(), { maxUploadMB, allowRegistration, sessionDays, driveLimitGB });
-    const { maxUploadMB, allowRegistration, sessionDays, driveLimitGB, dateFormat } = req.body;
-    const cfg = applyConfigUpdate(getConfig(), { maxUploadMB, allowRegistration, sessionDays, driveLimitGB, dateFormat });
+    // const { maxUploadMB, allowRegistration, sessionDays, driveLimitGB, dateFormat } = req.body;
+    // const cfg = applyConfigUpdate(getConfig(), { maxUploadMB, allowRegistration, sessionDays, driveLimitGB, dateFormat });
+    const { maxUploadMB, allowRegistration, sessionDays, driveLimitGB, dateFormat, recentEnabled } = req.body;
+    const cfg = applyConfigUpdate(getConfig(), { maxUploadMB, allowRegistration, sessionDays, driveLimitGB, dateFormat, recentEnabled });
     driveUsageBytes(cfg, true);
 
     saveConfig(cfg);
@@ -817,6 +820,7 @@ function createServerApp() {
         maxUploadMB: cfg.maxUploadMB,
         driveLimitGB: Number(cfg.driveLimitGB) || 0,
         dateFormat: cfg.dateFormat || 'relative',
+        recentEnabled: cfg.recentEnabled !== false,
         allowRegistration: cfg.allowRegistration,
         sessionDays: getSessionDays(cfg),
         port: cfg.port,

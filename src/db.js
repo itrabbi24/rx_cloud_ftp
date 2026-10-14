@@ -79,6 +79,10 @@ function applyConfigUpdate(config, body) {
     next.driveLimitGB = Math.max(0, Math.round((Number(src.driveLimitGB) || 0) * 100) / 100);
   }
   // Date display for everyone, chosen by the admin.
+  // Recent on My Drive for everyone (admin switch). Off hides it for all users.
+  if (src.recentEnabled !== undefined) {
+    next.recentEnabled = !!src.recentEnabled;
+  }
   if (src.dateFormat !== undefined && ['relative', 'short', 'full', 'numeric'].includes(src.dateFormat)) {
     next.dateFormat = src.dateFormat;
   }

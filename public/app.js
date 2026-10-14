@@ -508,7 +508,12 @@ function clearRecent() {
 function recentPrefKey() {
     return 'rx_show_recent_' + ((currentUser && currentUser.username) || 'anon');
 }
+// Global admin switch (Administration > Settings) wins over the per-user choice.
+function isRecentAllowed() {
+    return !(globalServerConfig && globalServerConfig.recentEnabled === false);
+}
 function isRecentEnabled() {
+    if (!isRecentAllowed()) return false;
     try { return localStorage.getItem(recentPrefKey()) !== '0'; } catch (e) { return true; }
 }
 function setRecentEnabled(on) {
@@ -520,6 +525,7 @@ function setRecentEnabled(on) {
 function syncRecentSwitch() {
     const btn = document.getElementById('profileMenuRecent');
     if (!btn) return;
+    btn.classList.toggle('hidden', !isRecentAllowed());
     const on = isRecentEnabled();
     btn.setAttribute('aria-checked', String(on));
     const sw = btn.querySelector('.rx-recent-switch');
@@ -2120,6 +2126,9 @@ async function fetchServerConfig() {
 
         setDriveLimitUi(data.driveLimitGB);
         if (typeof applyServerDateFormat === 'function') applyServerDateFormat(data.dateFormat);
+        const recentBox = document.getElementById('settingRecentEnabled');
+        if (recentBox) recentBox.checked = data.recentEnabled !== false;
+        if (typeof renderRecent === 'function') renderRecent();
 
         const sessionInput = document.getElementById('settingSessionDays');
         if (sessionInput && data.sessionDays) sessionInput.value = data.sessionDays;
@@ -2139,6 +2148,8 @@ function setDriveLimitUi(gb) {
 }
 
 async function saveGlobalServerConfig() {
+    const recentBox = document.getElementById('settingRecentEnabled');
+    const recentEnabled = recentBox ? recentBox.checked : undefined;
     const dateFormatSelect = document.getElementById('settingDateFormat');
     const dateFormat = dateFormatSelect ? dateFormatSelect.value : undefined;
     const driveLimitInput = document.getElementById('settingDriveLimitGB');
@@ -2161,7 +2172,8 @@ async function saveGlobalServerConfig() {
             headers: { 'Content-Type': 'application/json' },
             // body: JSON.stringify({ maxUploadMB, allowRegistration, sessionDays })
             // body: JSON.stringify({ maxUploadMB, allowRegistration, sessionDays, driveLimitGB })
-            body: JSON.stringify({ maxUploadMB, allowRegistration, sessionDays, driveLimitGB, dateFormat })
+            // body: JSON.stringify({ maxUploadMB, allowRegistration, sessionDays, driveLimitGB, dateFormat })
+            body: JSON.stringify({ maxUploadMB, allowRegistration, sessionDays, driveLimitGB, dateFormat, recentEnabled })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to save settings');
@@ -2187,6 +2199,8 @@ async function saveGlobalServerConfig() {
         applyUploadLimitUi(appliedMB);
         setDriveLimitUi(saved.driveLimitGB !== undefined ? saved.driveLimitGB : driveLimitGB);
         if (typeof applyServerDateFormat === 'function') applyServerDateFormat(saved.dateFormat || dateFormat);
+        if (saved.recentEnabled !== undefined) globalServerConfig.recentEnabled = saved.recentEnabled;
+        if (typeof renderRecent === 'function') renderRecent();
         loadDirectory(currentPath); // refresh the sidebar storage bar
 
         showToast(`Server settings saved! Upload limit: ${appliedMB > 0 ? appliedMB + ' MB' : 'Unlimited'}, session: ${appliedDays} days`);
