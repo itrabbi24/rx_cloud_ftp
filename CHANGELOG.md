@@ -5,6 +5,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-14
+
+### Added
+- **Account menu**: clicking your name or avatar at the top right opens a menu with My Profile, Change Password, Users & Settings (admins) and Log Out. Closes on an outside click or Esc.
+- Storage details show a red **Trash** slice.
+
+### Fixed
+- Files in the Trash (and the Vault) were not counted in storage usage or quotas, although they still take up disk space. They are now counted; emptying the trash updates the figure at once.
+
+### Changed
+- Users table: Edit and Delete sit side by side on one line. On phones each user is a tidy card with the avatar beside the name and full-width Edit/Delete buttons.
+
 ## [1.3.9] - 2026-10-14
 
 ### Fixed
@@ -147,7 +159,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.9...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.9...v1.4.0
 [1.3.9]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.8...v1.3.9
 [1.3.8]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.7...v1.3.8
 [1.3.7]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.3.6...v1.3.7

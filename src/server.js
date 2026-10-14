@@ -248,7 +248,8 @@ function getFolderSize(dirPath) {
     const items = fs.readdirSync(dirPath, { withFileTypes: true });
     for (const item of items) {
       const full = path.join(dirPath, item.name);
-      if (item.name === '.trash' || item.name === '.vault' || item.name === '.trash_meta' || item.name === '.vault_meta') continue;
+      // if (item.name === '.trash' || item.name === '.vault' || item.name === '.trash_meta' || item.name === '.vault_meta') continue;
+      // Trash and vault files still take up disk space, so they count toward usage and quota.
       if (item.isDirectory()) {
         total += getFolderSize(full);
       } else if (item.isFile()) {
@@ -268,7 +269,8 @@ async function getFolderSizeAsync(dirPath) {
     let items;
     try { items = await fs.promises.readdir(dir, { withFileTypes: true }); } catch (e) { continue; }
     for (const item of items) {
-      if (item.name === '.trash' || item.name === '.vault' || item.name === '.trash_meta' || item.name === '.vault_meta') continue;
+      // if (item.name === '.trash' || item.name === '.vault' || item.name === '.trash_meta' || item.name === '.vault_meta') continue;
+      // Trash and vault files still take up disk space, so they count toward usage and quota.
       const full = path.join(dir, item.name);
       if (item.isDirectory()) stack.push(full);
       else if (item.isFile()) {
@@ -1535,6 +1537,7 @@ function createServerApp() {
       if (fs.existsSync(trashDir)) fs.rmSync(trashDir, { recursive: true, force: true });
       if (fs.existsSync(trashMetaDir)) fs.rmSync(trashMetaDir, { recursive: true, force: true });
       broadcastLog('warning', `User "${req.user.username}" emptied their Trash`);
+      usageCache.clear(); // freed space shows at once, not after the 30 s cache
       return res.json({ success: true });
     }
 
@@ -1548,6 +1551,7 @@ function createServerApp() {
     if (fs.existsSync(metaFile)) fs.rmSync(metaFile, { force: true });
 
     broadcastLog('warning', `User "${req.user.username}" permanently deleted trash item: "${trashId}"`);
+    usageCache.clear(); // freed space shows at once, not after the 30 s cache
     res.json({ success: true });
   });
 
@@ -1669,19 +1673,43 @@ function createServerApp() {
       videos: { size: 0, count: 0, color: '#EC4899', label: 'Videos' },
       audio: { size: 0, count: 0, color: '#8B5CF6', label: 'Audio' },
       archives: { size: 0, count: 0, color: '#F59E0B', label: 'Archives' },
-      others: { size: 0, count: 0, color: '#64748B', label: 'Other Files' }
+      others: { size: 0, count: 0, color: '#64748B', label: 'Other Files' },
+      trash: { size: 0, count: 0, color: '#EF4444', label: 'Trash' }
     };
 
     let totalUsed = 0;
     let totalFiles = 0;
     let totalFolders = 0;
 
+    // Files waiting in the trash: counted in the total and the Trash slice only.
+    function scanTrash(dir) {
+      try {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) scanTrash(fullPath);
+          else if (entry.isFile()) {
+            try {
+              const sz = fs.statSync(fullPath).size;
+              totalUsed += sz;
+              breakdown.trash.size += sz;
+              breakdown.trash.count++;
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    }
+
     function scanDir(dir) {
       try {
         const entries = fs.readdirSync(dir, { withFileTypes: true });
         for (const entry of entries) {
-          if (entry.name.startsWith('.trash')) continue; // Skip trash
+          // if (entry.name.startsWith('.trash')) continue; // Skip trash
+          // Trash is counted (it still uses disk space) in its own "Trash" slice.
           const fullPath = path.join(dir, entry.name);
+          if (entry.name.startsWith('.trash')) {
+            if (entry.isDirectory()) scanTrash(fullPath);
+            continue;
+          }
           if (entry.isDirectory()) {
             totalFolders++;
             scanDir(fullPath);

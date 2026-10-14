@@ -1875,8 +1875,10 @@ async function loadUsersTable() {
                 <td class="py-3.5 px-6 text-xs font-semibold ${u.quotaMB > 0 ? 'text-gray-700' : 'text-emerald-600'}">${u.quotaMB > 0 ? u.quotaMB + ' MB' : 'Unlimited'}</td>
                 <td class="py-3.5 px-6">${userStatusCell(u)}</td>
                 <td class="py-3.5 px-6 text-right whitespace-nowrap">
-                    ${!u.isDefaultAdmin || isSelfUser(u) ? `<button onclick="openEditUserModal(${jsArg(u.id)})" class="px-3 py-1 mr-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer">Edit</button>` : ''}
+                    <div class="inline-flex items-center justify-end gap-1.5 flex-nowrap">
+                    ${!u.isDefaultAdmin || isSelfUser(u) ? `<button onclick="openEditUserModal(${jsArg(u.id)})" class="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer">Edit</button>` : ''}
                     ${!u.isDefaultAdmin && u.username !== 'admin' && !isSelfUser(u) ? `<button onclick="deleteUser(${jsArg(u.id)})" class="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer">Delete</button>` : (u.isDefaultAdmin ? '<span class="text-xs text-gray-400 italic">Default Admin</span>' : '<span class="text-xs text-gray-400 italic">You</span>')}
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -2834,14 +2836,17 @@ async function openStorageAnalyticsModal() {
         legendEl.innerHTML = '';
         gridEl.innerHTML = '';
 
-        const catKeys = ['docs', 'images', 'videos', 'audio', 'archives', 'others'];
+        // const catKeys = ['docs', 'images', 'videos', 'audio', 'archives', 'others'];
+        // Trash still uses disk space, so it is shown as its own slice.
+        const catKeys = ['docs', 'images', 'videos', 'audio', 'archives', 'others'].concat(data.breakdown && data.breakdown.trash ? ['trash'] : []);
         const iconMap = {
             docs: 'file-text',
             images: 'image',
             videos: 'film',
             audio: 'music',
             archives: 'archive',
-            others: 'file'
+            others: 'file',
+            trash: 'trash-2'
         };
 
         const total = data.totalUsed || 1;
@@ -2903,3 +2908,32 @@ function closeStorageAnalyticsModal() {
         modal.classList.add('hidden');
     }
 }
+
+
+// --- Header account menu (My Profile, Change Password, Log Out) -----------
+function toggleProfileMenu(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('profileMenu');
+    if (!menu) return;
+    const open = menu.classList.contains('hidden');
+    if (open) {
+        document.getElementById('profileMenuName').innerText = (currentUser && currentUser.username) || '';
+        document.getElementById('profileMenuRole').innerText = currentUser && currentUser.role === 'admin' ? 'Super Admin' : 'Standard User';
+        document.getElementById('profileMenuUsers').classList.toggle('hidden', !(currentUser && currentUser.role === 'admin'));
+    }
+    menu.classList.toggle('hidden', !open);
+    const btn = document.getElementById('profileMenuBtn');
+    if (btn) btn.setAttribute('aria-expanded', String(open));
+    if (window.lucide) lucide.createIcons();
+}
+function closeProfileMenu() {
+    const menu = document.getElementById('profileMenu');
+    if (menu) menu.classList.add('hidden');
+    const btn = document.getElementById('profileMenuBtn');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+document.addEventListener('click', (e) => {
+    const wrap = document.getElementById('profileMenuWrap');
+    if (wrap && !wrap.contains(e.target)) closeProfileMenu();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeProfileMenu(); });

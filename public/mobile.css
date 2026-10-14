@@ -294,6 +294,17 @@ body.rx-dragging #driveScreen::after {
     #view-trash tbody td[colspan], #view-users tbody td[colspan] { grid-column: 1 / -1; text-align: center; padding: 24px 0 !important; }
     #view-trash tbody td span.truncate { max-width: 70vw !important; }
 
+    /* Users card (v1.4.0): avatar beside the name, compact role/status row,
+       Edit/Delete as full-size touch buttons side by side. */
+    #view-users tbody tr { gap: 8px 10px; padding: 14px 16px; }
+    #view-users tbody td:first-child { display: flex !important; align-items: center; gap: 10px; }
+    #view-users tbody td:first-child > div { min-width: 0; }
+    #view-users tbody td select { font-size: 13px !important; padding: 4px 8px !important; }
+    #view-users tbody td:nth-child(3) { text-align: right; font-size: 11px; color: #64748b; }
+    #view-users tbody td:last-child { margin-top: 4px; padding-top: 10px !important; border-top: 1px solid #f1f5f9 !important; }
+    #view-users tbody td:last-child > div { display: flex !important; width: 100%; gap: 8px; }
+    #view-users tbody td:last-child button { flex: 1 1 0; justify-content: center; padding: 8px 0 !important; font-size: 13px !important; }
+
     /* Dialog headers: drop the long marketing subtitles on phones */
     #uploadModal h3 + p, #createUserModal h3 + p, #storageAnalyticsModal h3 + p, #cleanerModal h3 + p { display: none; }
     #uploadModal h3 { font-size: 16px !important; }

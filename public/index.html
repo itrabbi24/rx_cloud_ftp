@@ -422,7 +422,9 @@
 
                     <!-- User Profile Dropdown Badge -->
                     <!-- <div class="hdr-profile ..." onclick="if (window.innerWidth < 768) openMobileSidebar()" title="Account & menu">  (now opens My Profile; the menu is in the bottom tab bar) -->
-                    <div class="hdr-profile flex items-center gap-2 pl-1.5 sm:pl-3 border-l border-gray-200 shrink-0 cursor-pointer rounded-xl hover:bg-gray-50 pr-1 py-0.5" onclick="openProfileModal()" title="My profile">
+                    <!-- was: onclick="openProfileModal()" directly; now opens an account menu -->
+                    <div id="profileMenuWrap" class="relative shrink-0">
+                    <div class="hdr-profile flex items-center gap-2 pl-1.5 sm:pl-3 border-l border-gray-200 shrink-0 cursor-pointer rounded-xl hover:bg-gray-50 pr-1 py-0.5" onclick="toggleProfileMenu(event)" title="Account" role="button" aria-haspopup="menu" aria-expanded="false" id="profileMenuBtn">
                         <div id="profile-avatar" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0 overflow-hidden">
                             A
                         </div>
@@ -430,6 +432,20 @@
                             <div id="profile-name" class="font-semibold text-xs text-gray-800 leading-tight">Admin</div>
                             <div id="profile-role" class="text-[10px] text-gray-400">Super Admin</div>
                         </div>
+                        <i data-lucide="chevron-down" class="hidden lg:block w-3.5 h-3.5 text-gray-400"></i>
+                    </div>
+                    <!-- Account menu -->
+                    <div id="profileMenu" role="menu" class="hidden absolute right-0 top-full mt-2 w-60 bg-white border border-gray-200 rounded-2xl shadow-xl shadow-slate-200/70 py-1.5 z-50">
+                        <div class="px-4 py-2.5 border-b border-gray-100 mb-1">
+                            <div id="profileMenuName" class="text-sm font-bold text-gray-900 truncate">Admin</div>
+                            <div id="profileMenuRole" class="text-[11px] text-gray-400">Super Admin</div>
+                        </div>
+                        <button role="menuitem" onclick="closeProfileMenu(); openProfileModal();" class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"><i data-lucide="circle-user" class="w-4 h-4 text-gray-400"></i> My Profile</button>
+                        <button role="menuitem" onclick="closeProfileMenu(); openChangePassModal();" class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"><i data-lucide="key-round" class="w-4 h-4 text-gray-400"></i> Change Password</button>
+                        <button role="menuitem" id="profileMenuUsers" onclick="closeProfileMenu(); switchTab('users');" class="hidden w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"><i data-lucide="users" class="w-4 h-4 text-gray-400"></i> Users &amp; Settings</button>
+                        <div class="my-1 border-t border-gray-100"></div>
+                        <button role="menuitem" onclick="closeProfileMenu(); handleLogout();" class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer"><i data-lucide="log-out" class="w-4 h-4"></i> Log Out</button>
+                    </div>
                     </div>
                 </div>
             </header>
