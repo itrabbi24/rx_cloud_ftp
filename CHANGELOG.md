@@ -5,6 +5,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-10-15
+
+### Fixed
+- **Download ZIP and Compress ZIP failed in the .exe** ("Zip creation failed"). The zip library (archiver 8) is ESM-only and cannot be loaded by the packaged Node 18. Switched to archiver 7, loaded the normal way.
+- **Checkboxes on file cards did not stay ticked**: the card turned blue but the box emptied right after the click.
+- A file that cannot be read no longer leaves a ZIP download hanging; the error is reported.
+
+### Added
+- **Folders can be selected** (checkbox on each folder card) and downloaded or compressed together with files. Lock into Vault still takes files only.
+
 ## [1.5.1] - 2026-10-14
 
 ### Added
@@ -185,7 +195,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Packaging and launcher hotfixes (embedded web UI, HTTP by default, dual-stack binding, friendlier startup errors, encoding fixes). See [docs/HISTORY-1.1.x.md](docs/HISTORY-1.1.x.md) for the detailed notes.
 
-[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.5.2...HEAD
+[1.5.2]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/itrabbi24/rx_cloud_ftp/compare/v1.4.0...v1.4.1

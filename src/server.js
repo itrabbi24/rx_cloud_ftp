@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const { generateReadablePassword } = require('./db');
 const { getConfig, saveConfig, getUsers, saveUsers, normalizePermissions, getShares, saveShares, getUserMetadata, updateFileMeta, getVaultInfo, setVaultPin, verifyVaultPin, updateVaultInfo, getSessionDays, getUploadByteLimit, applyConfigUpdate, ABSOLUTE_MAX_UPLOAD_BYTES, ensureUsersExist, clearFirstLoginFile, FIRST_LOGIN_FILE } = require('./db');
 const AdmZip = require('adm-zip');
+const archiver = require('archiver');
 const unzipper = require('unzipper');
 const selfsigned = require('selfsigned');
 // const { isAdmin, hasPermission, publicUser } = require('./permissions');
@@ -1417,8 +1418,18 @@ function createServerApp() {
     const zipName = `download_${Date.now()}.zip`;
     res.attachment(zipName);
 
-    const archiverModule = await import('archiver');
-    const archive = (archiverModule.default || archiverModule)('zip', { zlib: { level: 6 } });
+    // const archiverModule = await import('archiver');
+    // const archive = (archiverModule.default || archiverModule)('zip', { zlib: { level: 6 } });
+    // archiver 8 is ESM-only and import() fails inside the pkg-built exe (Node 18),
+    // so every ZIP download returned 500 there. archiver 7 (CommonJS) is required normally.
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    // A file that cannot be read used to leave the request hanging.
+    archive.on('warning', (err) => { if (err.code !== 'ENOENT') console.warn('[zip]', err.message); });
+    archive.on('error', (err) => {
+      console.error('[zip]', err.message);
+      if (!res.headersSent) res.status(500).json({ error: 'Zip creation failed: ' + err.message });
+      else res.destroy(err);
+    });
     archive.pipe(res);
 
     for (const item of items) {
@@ -1904,8 +1915,9 @@ function createServerApp() {
       if (req.user.quotaMB > 0 && getFolderSize(destDirSafe.userRoot) + sourceBytes > req.user.quotaMB * 1024 * 1024) {
         return res.status(413).json({ error: 'Storage quota exceeded by this archive' });
       }
-      const archiverModule = await import('archiver');
-      const zip = (archiverModule.default || archiverModule)('zip', { zlib: { level: 6 } });
+      // const archiverModule = await import('archiver');
+      // const zip = (archiverModule.default || archiverModule)('zip', { zlib: { level: 6 } });
+      const zip = archiver('zip', { zlib: { level: 6 } });  // see download-zip: CommonJS archiver 7
       const output = fs.createWriteStream(zipDest);
       zip.pipe(output);
       for (const item of items) {

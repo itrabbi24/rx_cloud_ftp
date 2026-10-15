@@ -694,10 +694,15 @@ function renderFolders() {
         el.ondragover = (e) => handleFolderDragOver(e, folder.name, el);
         el.ondragleave = (e) => handleFolderDragLeave(e, el);
         el.ondrop = (e) => handleFolderDrop(e, folder.name, el);
-        el.className = `folder-card folder-dropzone relative bg-white p-4 rounded-2xl border ${colorStyle.border} hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between cursor-pointer group`;
+        // el.className = `folder-card folder-dropzone relative bg-white p-4 rounded-2xl border ${colorStyle.border} hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between cursor-pointer group`;
+        // file-card-wrapper + data-filename: the selection ring follows the checkbox like file cards.
+        const folderSelected = selectedFiles.has(folder.name);
+        el.setAttribute('data-filename', folder.name);
+        el.className = `file-card-wrapper folder-card folder-dropzone relative bg-white p-4 rounded-2xl border ${colorStyle.border} hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between cursor-pointer group ${folderSelected ? 'ring-2 ring-blue-500 bg-blue-50/20' : ''}`;
         el.innerHTML = `
             <div class="flex items-start justify-between mb-3" onclick="openFolder(${jsArg(folder.name)})">
                 <div class="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                    <input type="checkbox" data-filename="${escHtml(folder.name)}" onchange="toggleFileSelection(${jsArg(folder.name)}, event)" onclick="event.stopPropagation()" aria-label="Select folder ${escHtml(folder.name)}" class="file-row-checkbox w-4 h-4 shrink-0 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" ${folderSelected ? 'checked' : ''}>
                     <div class="p-2.5 rounded-xl shrink-0 group-hover:scale-105 transition-transform">
                         <i data-lucide="folder" class="w-6 h-6 ${colorStyle.icon} ${colorStyle.fill}"></i>
                     </div>
@@ -982,7 +987,7 @@ function renderFiles() {
                 <div class="file-thumb w-full h-36 bg-gray-50 overflow-hidden relative border-b border-gray-100 flex items-center justify-center">
                     <img src="${fileUrl}" alt="${escHtml(file.name)}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.parentElement.innerHTML='<div class=\\'flex items-center justify-center h-full text-blue-500\\'><i data-lucide=\\'image\\' class=\\'w-8 h-8\\'></i></div>'; if(window.lucide)lucide.createIcons();">
                     <div class="absolute top-2.5 left-2.5 z-10" onclick="event.stopPropagation()">
-                        <input type="checkbox" onchange="toggleFileSelection(${jsArg(file.name)}, event)" class="file-row-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shadow-sm" ${isSelected ? 'checked' : ''}>
+                        <input type="checkbox" data-filename="${escHtml(file.name)}" onchange="toggleFileSelection(${jsArg(file.name)}, event)" onclick="event.stopPropagation()" class="file-row-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shadow-sm" ${isSelected ? 'checked' : ''}>
                     </div>
                 </div>
             `;
@@ -994,7 +999,7 @@ function renderFiles() {
                     <i data-lucide="${meta.icon}" class="w-10 h-10 opacity-90"></i>
                     <span class="text-[10px] font-bold tracking-wider uppercase opacity-70">${escHtml(ext && ext !== file.name.toLowerCase() ? ext : 'file')}</span>
                     <div class="absolute top-2.5 left-2.5 z-10" onclick="event.stopPropagation()">
-                        <input type="checkbox" onchange="toggleFileSelection(${jsArg(file.name)}, event)" class="file-row-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shadow-sm" ${isSelected ? 'checked' : ''}>
+                        <input type="checkbox" data-filename="${escHtml(file.name)}" onchange="toggleFileSelection(${jsArg(file.name)}, event)" onclick="event.stopPropagation()" class="file-row-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shadow-sm" ${isSelected ? 'checked' : ''}>
                     </div>
                 </div>
             `;
